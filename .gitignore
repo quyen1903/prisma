@@ -1,0 +1,10 @@
+node_modules
+.env
+dist
+server.js
+<<<<<<< HEAD
+uploads
+=======
+uploads
+logs
+>>>>>>> 637a14f (first commit)

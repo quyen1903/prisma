@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// shop model with uuid as primary key
+model Shop {
+  id   Int    @id @default(autoincrement())
+  uuid String @unique @default(uuid())
+  name      String
+  email     String    @unique()
+  password  String
+  salt      String
+  roles     String
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  keyToken  KeyToken? // Optional relation to KeyToken
+  discount Discount[]
+  products      Product[]
+  clothings     Clothing[]
+  electronic   Electronic[]
+  furnitures    Furniture[]
+
+  @@map("shops")
+}
+
+// keyToken model with reference to shop uuid
+model KeyToken {
+  id                Int      @id @default(autoincrement()) // Auto-increment ID for KeyToken
+
+  //1-1 relation with shop
+  shop  Shop @relation(fields: [userId],references: [uuid])
+  userId            String  @unique
+
+  publicKey         String
+  refreshTokensUsed String[] @default([])
+  refreshToken      String
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  // Define foreign key relationship to Shop model
+  @@map("key_tokens")
+}
+
+model APIkey {
+  id Int @id @default(autoincrement())
+  key String  
+  status Boolean
+  permission String[]
+
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  @@map("api_keys")
+}
+
+model Product {
+  id                 Int                @id @default(autoincrement())
+  uuid  String @unique
+  productName        String             @map("product_name")
+  productThumb       String             @map("product_thumb")
+  productDescription String?            @map("product_description")
+  productSlug        String?            @map("product_slug")
+  productPrice       Float              @map("product_price")
+  productQuantity    Int                @map("product_quantity")
+  productType        ProductType        @map("product_type")
+
+  //one to many relation with shop
+  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShopId String  @map("product_shop")
+
+  productCart Cart @relation(fields: [productCartId], references: [uuid])
+  productCartId String  @map("product_cart")
+
+
+  productAttributes  Json?              @map("product_attributes")
+  productRatingsAverage Float           @default(4.5) @map("product_ratingsAverage")
+  productVariation   String[]           @default([]) @map("product_variation")
+  isDraft            Boolean            @default(true)
+  isPublished        Boolean            @default(false)
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  @@index([productName, productDescription]) // Create a text index for search
+  @@map("products")
+}
+
+// Clothing Model
+model Clothing {
+  id           Int      @id @default(autoincrement())
+  uuid  String @unique @default(uuid())
+
+  brand        String
+  size         String
+  material     String
+
+  //one to many relation with shop
+  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShopId String  @map("product_shop")
+
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  @@map("clothes")
+}
+
+// Electronics Model
+model Electronic {
+  id           Int      @id @default(autoincrement())
+  uuid  String @unique @default(uuid())
+  manufacturer  String
+  model        String
+  color        String
+  
+  //one to many relation with shop
+  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShopId String  @map("product_shop")
+
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  @@map("electronics")
+}
+
+// Furniture Model
+model Furniture {
+  id           Int      @id @default(autoincrement())
+  uuid  String @unique @default(uuid())
+  brand        String
+  size         String
+  material     String
+
+  //one to many relation with shop
+  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShopId String  @map("product_shop")
+
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  @@map("furnitures")
+}
+
+model Discount {
+  id           Int      @id @default(autoincrement())
+  uuid  String @unique @default(uuid())
+  discountName String @map("discount_name")
+  discountDescription String @map("discount_description")
+  discountType String @map("discount_type") @default("fixed_amount")
+  discountValue Float @map("discount_value")
+  discountCode String @unique @map("discount_code")
+  discountStartDates DateTime @map("discount_start_dates")
+  discountEndDates DateTime @map("discount_end_dates")
+  discountMaxUses Int @map("discount_max_uses")
+  discountUsesCount Int @map("discount_uses_count")
+  discountUsersUsed String[] @default([]) @map("discount_users_used")
+  discountMaxUsesPerUser Int @map("discount_max_uses_per_user")
+  discountMinOrderValue Float @map("discount_min_order_value")
+  //one to many with shop
+  discountShop Shop @relation(fields: [discountShopId], references: [uuid])
+  discountShopId String @map("discount_shop")
+
+  discountIsActive Boolean @default(true) @map("discount_is_active") 
+  discountAppliesTo DiscountAppliesTo @map("DiscountAppliesTo")
+  discountProductIds String[] @default([]) @map("discount_product_ids")
+  
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  @@map("discounts")
+}
+
+model Cart {
+  id                Int       @id @default(autoincrement()) // Primary key for the Cart model
+  uuid  String @unique @default(uuid())
+  state             CartState @default(ACTIVE) // Enum for cart states
+  countProduct      Int        @default(0) // Corresponds to cart_count_product
+  userId            Int        // Corresponds to cart_userId
+  createdOn         DateTime   @default(now()) @map("createdOn") // Timestamps
+  modifiedOn        DateTime   @updatedAt @map("modifiedOn")
+
+  products      Product[]
+  @@map("carts")
+}
+
+enum CartState {
+  ACTIVE
+  COMPLETE
+  FAIL
+  PENDING
+}
+
+enum RoleShop {
+  SHOP 
+  WRITER 
+  EDITOR 
+  ADMIN 
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductType {
+  Clothing
+  Electronic
+  Furniture
+}
+
+enum DiscountAppliesTo {
+  all
+  specific
+}
