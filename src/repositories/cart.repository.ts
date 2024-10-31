@@ -19,7 +19,7 @@ export const createUserCart = async ({ userId, product }: {userId: string, produ
     });
 };
 
-export const createCartProduct = async({ userCartId, product }: {userCartId: string, product: ICartProduct})=>{
+export const createCartProduct = async({ cartId, product }: {cartId: string, product: ICartProduct})=>{
     return await prisma.cartProduct.create({
         data:{
             productId: product.productId,
@@ -27,7 +27,7 @@ export const createCartProduct = async({ userCartId, product }: {userCartId: str
             quantity: product.quantity,
             name: product.name,
             price: product.price,
-            userCartId
+            cartId
         }
     })
 }

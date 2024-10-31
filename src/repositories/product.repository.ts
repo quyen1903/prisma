@@ -59,3 +59,11 @@ export const findProduct = async(id: string, unSelect: string[])=>{
         select:unGetSelectData(unSelect)
     })
 }
+
+export const getProductById = async (productId: string)=>{
+    return await prisma.product.findUnique({
+        where: {
+            id:productId
+        }
+    })
+}

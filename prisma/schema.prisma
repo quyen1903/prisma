@@ -193,8 +193,8 @@ model CartProduct {
   name      String  @map("cart_product_name")
   price     Float @map("cart_product_price")
 
-  userCart  Cart  @relation(fields: [userCartId], references: [id])
-  userCartId    String @map("cart_product_cartId")
+  cart  Cart  @relation(fields: [cartId], references: [id])
+  cartId    String @map("cart_product_cartId")
 
   createdOn         DateTime   @default(now()) @map("createdOn")
   modifiedOn        DateTime   @updatedAt @map("modifiedOn")

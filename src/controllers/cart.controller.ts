@@ -3,9 +3,9 @@ import { SuccessResponse } from '../core/success.response';
 import CartService from '../services/cart.service';
 
 export interface ICartRequest {
-    userId: number;
+    userId: string;
     product?: ICartProduct[];  // Updated to an array
-    shop_order_ids?: {
+    shop_order_ids: {
         shopId: string;
         item_products: {
             quantity: number;
