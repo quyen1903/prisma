@@ -126,37 +126,31 @@ export class CreateDiscountDTO {
 }
 
 class Product {
-    @IsNotEmpty()
     @IsString()
     discountProductId: string;
 
     @IsInt()
-    @IsNotEmpty()
     discountQuantity: number;
 
     @IsNumber()
-    @IsNotEmpty()
     discountPrice: number;
 }
 
 export class AmountDiscountDTO {
     @IsString()
-    @IsNotEmpty()
     discountCode: string;
-
+//not created user's id yet, will create user later on
     @IsString()
-    @IsNotEmpty()
-    discountUserId: string;
+    discountUserId?: string;
 
     @IsString()
     @IsNotEmpty()
     discountShopId: string;
 
     @IsArray()
-    @IsNotEmpty()
     @ValidateNested()
     @Type(() => Product)
-    discountProducts: Product[];
+    discountProducts?: Product[];
 
     constructor({
         discountCode,
@@ -165,9 +159,9 @@ export class AmountDiscountDTO {
         discountProducts,
     }: {
         discountCode: string;
-        discountUserId: string;
+        discountUserId?: string;
         discountShopId: string;
-        discountProducts: Product[];
+        discountProducts?: Product[];
     }) {
         this.discountCode = discountCode;
         this.discountUserId = discountUserId;

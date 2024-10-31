@@ -1,26 +1,46 @@
-import { IsInt, IsNotEmpty, IsString, IsNumber, ValidateNested, IsArray } from "class-validator"
+import { IsInt, IsNotEmpty, IsString, IsNumber, ValidateNested, IsArray, IsOptional } from "class-validator"
 import { Type } from "class-transformer"
 
 class Product{
     @IsString()
-    @IsNotEmpty()
-    productId:string
+    @IsOptional()
+    productId?:string 
 
     @IsString()
-    @IsNotEmpty()
-    shopId:string
-
-    @IsInt()
-    @IsNotEmpty()
-    quantity:number
-
-    @IsString()
-    @IsNotEmpty()
-    name:string
+    @IsOptional()
+    shopId?:string
 
     @IsNumber()
-    @IsNotEmpty()
-    price:number
+    @IsOptional()
+    quantity?:number
+
+    @IsString()
+    @IsOptional()
+    name?:string
+
+    @IsNumber()
+    @IsOptional()
+    price?:number
+
+    constructor({
+        productId,
+        shopId,
+        quantity,
+        name,
+        price
+    }:{
+        productId?:string,
+        shopId?:string
+        quantity?:number
+        name?:string
+        price?:number
+    }){
+        this.productId = productId,
+        this.shopId = shopId,
+        this.quantity = quantity,
+        this.name = name,
+        this.price = price
+    }
 }
 
 class ShopOrderIds{
@@ -60,21 +80,23 @@ class Item_Products{
     @IsNotEmpty()
     name: string
 }
-export class AddCart{
+export class AddCart {
     @IsInt()
     @IsNotEmpty()
-    userId:number
+    userId: number;
 
+    @IsArray()
     @IsNotEmpty()
-    @ValidateNested()  // Validate nested class
-    @Type(() => Product)  // Correctly transform nested object
-    product: Product;
+    @ValidateNested({ each: true })
+    @Type(() => Product)
+    product: Product[];
 
-    constructor({userId, product}:{userId: number, product:Product}){
-        this.userId = userId,
-        this.product = product
+    constructor({ userId, product }: { userId: number; product: Product[] }) {  // Expect an array of Products
+        this.userId = userId;
+        this.product = product;
     }
 }
+
 
 export class UpdateCart{
     @IsInt()

@@ -90,7 +90,7 @@ class AccessService{
     };
 
     static async logout ( keyStore: IKeyToken ){
-        const delKey = await KeyTokenService.removeKeyByUUID(keyStore.userId );
+        const delKey = await KeyTokenService.removeKeyByUUID(keyStore.shopId );
         return delKey 
     };
 
@@ -104,10 +104,10 @@ class AccessService{
         
         const { publicKey, privateKey } = this.generateKeyPair();
         const { id:userId } = foundShop;
-        const tokens = await createTokenPair({userId: foundShop.uuid,email: login.email}, publicKey, privateKey);
+        const tokens = await createTokenPair({userId: foundShop.id,email: login.email}, publicKey, privateKey);
 
         await KeyTokenService.createKeyToken({  
-            userId: foundShop.uuid,
+            shopId: foundShop.id,
             publicKey,
             refreshToken:tokens.refreshToken,
         })
@@ -138,11 +138,11 @@ class AccessService{
 
         if(newShop){
             const { publicKey, privateKey } = this.generateKeyPair();
-            const tokens = await createTokenPair({userId:newShop.uuid, email: newShop.email},publicKey, privateKey)
+            const tokens = await createTokenPair({userId:newShop.id, email: newShop.email},publicKey, privateKey)
             if(!tokens)throw new BadRequestError('create tokens error!!!!!!')
 
             const keyStore = await KeyTokenService.createKeyToken({
-                userId: newShop.uuid,
+                shopId: newShop.id,
                 publicKey:publicKey,
                 refreshToken:tokens.refreshToken
             })

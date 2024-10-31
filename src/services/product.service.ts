@@ -113,7 +113,7 @@ class Product {
     async createProduct(subClassId: string): Promise<any> {
         const newProduct = await prisma.product.create({
             data: {
-                uuid: subClassId,
+                id: subClassId,
                 productAttributes: this.productAttributes,
                 productDescription: this.productDescription,
                 productName: this.productName,
@@ -130,7 +130,7 @@ class Product {
 
     async updateProduct(productId: string, payload: object) {
         return await prisma.product.update({
-            where: { uuid: productId },
+            where: { id: productId },
             data: payload
         });
     }
@@ -144,13 +144,13 @@ class Clothing extends Product {
                 productShopId: this.productShop
             }
         });
-        return await super.createProduct(newClothing.uuid);
+        return await super.createProduct(newClothing.id);
     }
     async updateProduct(productId: string) {
         const objectParams = removeUndefinedObject(this);
         if (objectParams.productAttributes) {
             await prisma.clothing.update({
-                where: { uuid: productId },
+                where: { id: productId },
                 data: flattenNestedObject(objectParams.productAttributes)
             });
         }
@@ -166,14 +166,14 @@ class Electronic extends Product {
                 productShopId: this.productShop
             }
         });
-        return await super.createProduct(newElectronic.uuid);
+        return await super.createProduct(newElectronic.id);
     }
 
     async updateProduct(productId: string) {
         const objectParams = removeUndefinedObject(this);
         if (objectParams.productAttributes) {
             await prisma.electronic.update({
-                where: { uuid: productId },
+                where: { id: productId },
                 data: flattenNestedObject(objectParams.productAttributes)
             });
         }
@@ -190,7 +190,7 @@ class Furniture extends Product {
             }
         });
         
-        return await super.createProduct(newFurniture.uuid);
+        return await super.createProduct(newFurniture.id);
     }
 
     async updateProduct(productId: string) {
@@ -198,7 +198,7 @@ class Furniture extends Product {
         console.log('flatten ', flattenNestedObject(objectParams.productAttributes))
         if (objectParams.productAttributes) {
             await prisma.furniture.update({
-                where: { uuid: productId },
+                where: { id: productId },
                 data: flattenNestedObject(objectParams.productAttributes)
             });
         }

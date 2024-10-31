@@ -11,5 +11,6 @@ router.use(authentication)
 
 router.post('',asyncHandler(DiscountController.createDiscountCode));
 router.get('',asyncHandler(DiscountController.getAllDiscountCodes));
+router.delete('',asyncHandler(DiscountController.deleteDiscountCode))
 
 export default router

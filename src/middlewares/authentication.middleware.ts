@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'; 
 import JWT from 'jsonwebtoken'
-import { findById } from '../services/apikey.service';
+import ApiKey from '../services/apikey.service';
 import asyncHandler from '../shared/helper/async.handler'
 import { AuthFailureError, NotFoundError } from '../core/error.response'
 import  KeyTokenService  from '../services/keyToken.service'
@@ -27,9 +27,8 @@ export const apiKey = async (req: Request, res: Response, next: NextFunction) =>
             message: 'Forbidden error',
         });
     }
-
     // Check API key object
-    const objKey = await findById(key);
+    const objKey = await ApiKey.findById(key);
     
     if (!objKey) {
         res.status(403).json({

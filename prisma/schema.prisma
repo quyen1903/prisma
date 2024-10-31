@@ -10,13 +10,12 @@ datasource db {
 
 // shop model with uuid as primary key
 model Shop {
-  id   Int    @id @default(autoincrement())
-  uuid String @unique @default(uuid())
-  name      String
-  email     String    @unique()
-  password  String
-  salt      String
-  roles     String
+  id   String    @id  @unique @default(uuid())
+  name      String  @map("shop_name")
+  email     String  @map("shop_email")  @unique()
+  password  String  @map("shop_password")
+  salt      String  @map("shop_salt")
+  roles     String  @map("shop_role")
   createdAt DateTime  @map("created_at") @default(now())
   updatedAt DateTime  @map("updated_at") @updatedAt
 
@@ -32,11 +31,14 @@ model Shop {
 
 // keyToken model with reference to shop uuid
 model KeyToken {
-  id                Int      @id @default(autoincrement()) // Auto-increment ID for KeyToken
+  id   String    @id  @unique @default(uuid())
 
   //1-1 relation with shop
-  shop  Shop @relation(fields: [userId],references: [uuid])
-  userId            String  @unique
+  shop  Shop @relation(fields: [shopId],references: [id])
+  shopId            String  @unique @map("key_shop")
+
+  // user  User  @relation(fields: [userId], references: [id])
+  // userId  String  @unique @map("key_user")
 
   publicKey         String
   refreshTokensUsed String[] @default([])
@@ -49,7 +51,7 @@ model KeyToken {
 }
 
 model APIkey {
-  id Int @id @default(autoincrement())
+  id   String    @id  @unique @default(uuid())
   key String  
   status Boolean
   permission String[]
@@ -61,8 +63,7 @@ model APIkey {
 }
 
 model Product {
-  id                 Int                @id @default(autoincrement())
-  uuid  String @unique
+  id   String    @id  @unique @default(uuid())
   productName        String             @map("product_name")
   productThumb       String             @map("product_thumb")
   productDescription String?            @map("product_description")
@@ -72,12 +73,8 @@ model Product {
   productType        ProductType        @map("product_type")
 
   //one to many relation with shop
-  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShop  Shop   @relation(fields: [productShopId], references: [id])
   productShopId String  @map("product_shop")
-
-  productCart Cart @relation(fields: [productCartId], references: [uuid])
-  productCartId String  @map("product_cart")
-
 
   productAttributes  Json?              @map("product_attributes")
   productRatingsAverage Float           @default(4.5) @map("product_ratingsAverage")
@@ -93,15 +90,14 @@ model Product {
 
 // Clothing Model
 model Clothing {
-  id           Int      @id @default(autoincrement())
-  uuid  String @unique @default(uuid())
+  id   String    @id  @unique @default(uuid())
 
   brand        String
   size         String
   material     String
 
   //one to many relation with shop
-  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShop  Shop   @relation(fields: [productShopId], references: [id])
   productShopId String  @map("product_shop")
 
   createdAt DateTime  @map("created_at") @default(now())
@@ -112,14 +108,13 @@ model Clothing {
 
 // Electronics Model
 model Electronic {
-  id           Int      @id @default(autoincrement())
-  uuid  String @unique @default(uuid())
+  id   String    @id  @unique @default(uuid())
   manufacturer  String
   model        String
   color        String
   
   //one to many relation with shop
-  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShop  Shop   @relation(fields: [productShopId], references: [id])
   productShopId String  @map("product_shop")
 
   createdAt DateTime  @map("created_at") @default(now())
@@ -130,14 +125,14 @@ model Electronic {
 
 // Furniture Model
 model Furniture {
-  id           Int      @id @default(autoincrement())
-  uuid  String @unique @default(uuid())
+  id   String    @id  @unique @default(uuid())
+
   brand        String
   size         String
   material     String
 
   //one to many relation with shop
-  productShop  Shop   @relation(fields: [productShopId], references: [uuid])
+  productShop  Shop   @relation(fields: [productShopId], references: [id])
   productShopId String  @map("product_shop")
 
   createdAt DateTime  @map("created_at") @default(now())
@@ -147,8 +142,8 @@ model Furniture {
 }
 
 model Discount {
-  id           Int      @id @default(autoincrement())
-  uuid  String @unique @default(uuid())
+  id   String    @id  @unique @default(uuid())
+
   discountName String @map("discount_name")
   discountDescription String @map("discount_description")
   discountType String @map("discount_type") @default("fixed_amount")
@@ -162,11 +157,11 @@ model Discount {
   discountMaxUsesPerUser Int @map("discount_max_uses_per_user")
   discountMinOrderValue Float @map("discount_min_order_value")
   //one to many with shop
-  discountShop Shop @relation(fields: [discountShopId], references: [uuid])
+  discountShop Shop @relation(fields: [discountShopId], references: [id])
   discountShopId String @map("discount_shop")
 
   discountIsActive Boolean @default(true) @map("discount_is_active") 
-  discountAppliesTo DiscountAppliesTo @map("DiscountAppliesTo")
+  discountAppliesTo DiscountAppliesTo @map("discount_applies_to")
   discountProductIds String[] @default([]) @map("discount_product_ids")
   
   createdAt DateTime  @map("created_at") @default(now())
@@ -176,17 +171,57 @@ model Discount {
 }
 
 model Cart {
-  id                Int       @id @default(autoincrement()) // Primary key for the Cart model
-  uuid  String @unique @default(uuid())
-  state             CartState @default(ACTIVE) // Enum for cart states
-  countProduct      Int        @default(0) // Corresponds to cart_count_product
-  userId            Int        // Corresponds to cart_userId
-  createdOn         DateTime   @default(now()) @map("createdOn") // Timestamps
+  id   String    @id  @unique @default(uuid())
+
+  state             CartState @default(ACTIVE)  @map("cart_state")
+  countProduct      Int        @default(0) @map("cart_count_product")
+  userId            String        @unique  @map("cart_userId")
+  cartProducts    CartProduct[]
+
+  createdOn         DateTime   @default(now()) @map("createdOn")
   modifiedOn        DateTime   @updatedAt @map("modifiedOn")
 
-  products      Product[]
   @@map("carts")
 }
+
+model CartProduct {
+  id   String    @id  @unique @default(uuid())
+
+  productId String  @unique @map("cart_product_productId")
+  shopId    String  @map("cart_product_shopId")
+  quantity  Int @map("cart_product_quantity")
+  name      String  @map("cart_product_name")
+  price     Float @map("cart_product_price")
+
+  userCart  Cart  @relation(fields: [userCartId], references: [id])
+  userCartId    String @map("cart_product_cartId")
+
+  createdOn         DateTime   @default(now()) @map("createdOn")
+  modifiedOn        DateTime   @updatedAt @map("modifiedOn")
+
+  @@map("cart_products")
+}
+
+model User {
+  id   String    @id  @unique @default(uuid())
+
+  name      String  @map("user_name")
+  email     String  @map("user_email")  @unique()
+  password  String  @map("user_password")
+  salt      String  @map("user_salt")
+  phone String  @map("user_phone")
+  sex String  @map("user_sex")
+  avatar  String  @map("user_avatar")
+  dateOfBirth DateTime  @map("user_date_of_birth")
+  status  Status  @map("user_status")
+
+  createdAt DateTime  @map("created_at") @default(now())
+  updatedAt DateTime  @map("updated_at") @updatedAt
+
+  // keytoken  KeyToken?
+  @@map("users")
+}
+
 
 enum CartState {
   ACTIVE
@@ -205,6 +240,7 @@ enum RoleShop {
 enum Status {
   ACTIVE
   INACTIVE
+  PENDING
 }
 
 enum ProductType {

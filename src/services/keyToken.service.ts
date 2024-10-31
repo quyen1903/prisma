@@ -2,7 +2,7 @@ import { NotFoundError } from '../core/error.response';
 import {prisma} from '../database/init.postgresql';
 
 export interface IKeyToken{
-    userId: string;
+    shopId: string;
     publicKey: string;
     refreshTokensUsed?: string[];
     refreshToken: string;
@@ -10,25 +10,25 @@ export interface IKeyToken{
 
 class KeyTokenService{
 
-    static createKeyToken = async ({ userId, publicKey , refreshToken }: IKeyToken) => {
+    static createKeyToken = async ({ shopId, publicKey , refreshToken }: IKeyToken) => {
         return await prisma.keyToken.upsert ({
-            where: { userId },
+            where: { shopId },
             update: { publicKey, refreshToken }, // If it exists, update the record
-            create: { userId, publicKey, refreshToken }, // If it doesn't exist, create a new one
+            create: { shopId, publicKey, refreshToken }, // If it doesn't exist, create a new one
         });
     };
 
-    static findByUserId = async (userId: string)=> {
+    static findByUserId = async (shopId: string)=> {
         return await prisma.keyToken.findFirst({
             where:{
-                userId
+                shopId
             }
         })
     }
 
-    static removeKeyByUUID = async(userId: string)=>{
+    static removeKeyByUUID = async(shopId: string)=>{
         const keyToken = await prisma.keyToken.findFirst({
-            where: { userId }
+            where: { shopId }
         });
     
         if (keyToken) {

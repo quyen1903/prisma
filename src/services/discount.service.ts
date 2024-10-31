@@ -163,7 +163,7 @@ class DiscountService {
         //check wheather discount had minimum value
         let totalOrder = 0
         if(discountMinOrderValue > 0){
-            totalOrder = discountProducts.reduce((accumulator, product)=>{
+            totalOrder = discountProducts!.reduce((accumulator, product)=>{
                 return accumulator + (product.discountQuantity * product.discountPrice)
             },0)
             if(totalOrder < discountMinOrderValue) {
@@ -209,7 +209,7 @@ class DiscountService {
             "discount_uses_count" = "discount_uses_count" -1
         WHERE "uuid" = $2
         `;
-        await pg.query(updateQuery, [discountUserId, foundDiscount.uuid]);
+        await pg.query(updateQuery, [discountUserId, foundDiscount.id]);
         
         return updateQuery
     }

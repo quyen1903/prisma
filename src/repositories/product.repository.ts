@@ -8,29 +8,15 @@ export const findAll = async(where: any, skip:number, take:number)=>{
         orderBy: {
             id: 'desc',
         },
-        skip,//
-        take,//
-        // select:{
-        //     productName: true,
-        //     productThumb: true,
-        //     productDescription: true,
-        //     productPrice: true,
-        //     productQuantity: true,
-        //     productType: true,
-        //     productShop:{
-        //         select:{
-        //             name: true,
-        //             email: true,
-        //         }
-        //     }
-        // }
+        skip,
+        take,
     })
 }
 
-export const publish = async(productShopId: string, uuid: string, isDraft: boolean, isPublished:boolean)=>{
+export const publish = async(productShopId: string, id: string, isDraft: boolean, isPublished:boolean)=>{
     return await prisma.product.update({
         where:{
-            uuid,
+            id,
             productShopId
         },
         data:{
@@ -67,9 +53,9 @@ export const findAllProducts = async(take: number, skip: number, filter: object,
     })
 }
 
-export const findProduct = async(uuid: string, unSelect: string[])=>{
+export const findProduct = async(id: string, unSelect: string[])=>{
     return await prisma.product.findUnique({
-        where:{uuid},
+        where:{id},
         select:unGetSelectData(unSelect)
     })
 }

@@ -51,6 +51,15 @@ class DiscountController{
             })
         }).send(res)
     }
+    
+    deleteDiscountCode = async(req: Request, res: Response, next: NextFunction)=>{
+        const result = await DiscountService.deleteDiscountCode(req.body)
+
+        new SuccessResponse({
+            message: 'Success delete Discount Code',
+            metadata: result
+        }).send(res)
+    }
 }
 
 export default new DiscountController()
