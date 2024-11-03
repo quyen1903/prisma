@@ -6,6 +6,7 @@ export interface ICartRequest {
     userId: string;
     product?: ICartProduct[];  // Updated to an array
     shop_order_ids: {
+        id:string,
         shopId: string;
         item_products: {
             quantity: number;

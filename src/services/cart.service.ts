@@ -2,11 +2,9 @@ import { prisma } from "../database/init.postgresql";
 import { 
     getCart,
     createUserCart,
-    createCartProduct 
+    createCartProduct
 } from "../repositories/cart.repository";
 import { ICartProduct,ICartRequest } from "../controllers/cart.controller";
-import {getProductById} from "../repositories/product.repository";
-import { NotFoundError } from "../core/error.response";
 class CartService{
     static async addToCart({ userId, product }: {userId: string, product: ICartProduct}){
         //check cart existed or not, if not, create new cart
@@ -25,12 +23,13 @@ class CartService{
             return createCartProduct({cartId:userCart.id,product})
         }
 
-        //check wheather product we're passing is
+        //check wheather product we're passing is cart existed in cart or not
         const checkCartProduct = await prisma.cartProduct.findFirst({
             where:{productId:product.productId}
         })
 
         if(!checkCartProduct){
+            //increase count product by one
             await prisma.cart.update({
                 where:{
                     id:userCart.id
@@ -39,72 +38,54 @@ class CartService{
                     countProduct: userCart.countProduct +=1
                 }
             })
+            // add this product to cart
             return createCartProduct({cartId:userCart.id,product})
         }
     }
 
-    static async updateUserCartQuantity({ userId, product }: {userId: string, product: ICartProduct}){
-        const {productId, quantity} = product
-        // const query = { 
-        //     cart_userId: userId,
-        //     "cart_products.productId": productId,
-        //     cart_state: 'active'
-        // },updateSet = {
-        //     $inc:{
-        //         'cart_products.$.quantity': quantity
-        //     }
-        // },options = {upsert:true, new:true};
-
-        const cart = await getCart({userId})
-
-        return await prisma.cartProduct.update({
-                where:{
-                    cartId: cart?.id,
-                    productId
-                },
-                data:{
-                    quantity
-                }
-
-        })
-    }
-
     static async update({ userId, shop_order_ids }: ICartRequest){
-        const { productId, shopId, price, quantity, old_quantity } = shop_order_ids[0]?.item_products[0];
-        const foundProduct = await getProductById(productId)
-        if(!foundProduct) throw new NotFoundError('product not found')
+        //loop through each shop
+        const cart = await getCart({ userId });
 
-        if(foundProduct.productShopId.toString() !== shop_order_ids[0]?.shopId){
-            throw new NotFoundError('Product not belong to the shop')
+        if (!cart) {
+            throw new Error("Cart not found for user");
         }
 
-        return await CartService.updateUserCartQuantity({
-            userId,
-            product:{
-                productId,
-                shopId,
-                price,
-                name: '',
-                quantity:quantity - old_quantity
+        for(const element of shop_order_ids){
+            //loop through each product of shop
+            for(const eachShop of element.item_products){
+                await prisma.cartProduct.update({
+                    //composite 
+                    where: {
+                        cartId_productId: {
+                            cartId: cart.id,
+                            productId: eachShop.productId,
+                        },
+                    },
+                    data:{quantity: eachShop.quantity - eachShop.old_quantity}
+                })
             }
-        })
+        }
     }
 
     static async deleteUserCart({ userId, productId }: {userId:string, productId: string}){
         //delete certain product in carts
-        const userCart = await getCart({userId})
+        const cart = await getCart({userId})
 
         await prisma.cart.update({
             where:{
                 userId
             },
             data:{
-                countProduct: userCart!.countProduct -= 1
+                countProduct: cart!.countProduct -= 1
             }
         })
         const deleteCart = await prisma.cartProduct.delete({
             where: {
-                productId
+                cartId_productId: {
+                    cartId: cart!.id,
+                    productId: productId,
+                },
             },
           })
           

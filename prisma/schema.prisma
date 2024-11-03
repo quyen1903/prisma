@@ -187,7 +187,7 @@ model Cart {
 model CartProduct {
   id   String    @id  @unique @default(uuid())
 
-  productId String  @unique @map("cart_product_productId")
+  productId String  @map("cart_product_productId")
   shopId    String  @map("cart_product_shopId")
   quantity  Int @map("cart_product_quantity")
   name      String  @map("cart_product_name")
@@ -198,7 +198,7 @@ model CartProduct {
 
   createdOn         DateTime   @default(now()) @map("createdOn")
   modifiedOn        DateTime   @updatedAt @map("modifiedOn")
-
+  @@unique([cartId, productId])
   @@map("cart_products")
 }
 

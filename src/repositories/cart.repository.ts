@@ -31,3 +31,9 @@ export const createCartProduct = async({ cartId, product }: {cartId: string, pro
         }
     })
 }
+
+export async function productExistedInCart(productId: string){
+    return await prisma.cartProduct.findFirst({
+        where:{productId}
+    })
+}
