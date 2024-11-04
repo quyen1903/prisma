@@ -37,12 +37,12 @@ class CartController{
         }).send(res)
     }
 
-    // update = async function(req: Request, res: Response, next: NextFunction){
-    //     new SuccessResponse({
-    //         message:'update Cart Success',
-    //         metadata: await CartService.update(req.body)
-    //     }).send(res)
-    // }
+    update = async function(req: Request, res: Response, next: NextFunction){
+        new SuccessResponse({
+            message:'update Cart Success',
+            metadata: await CartService.update(req.body)
+        }).send(res)
+    }
 
     delete = async function(req: Request, res: Response, next: NextFunction){
         new SuccessResponse({

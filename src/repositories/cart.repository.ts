@@ -8,26 +8,32 @@ export const getCart = async(filter:{})=>{
 }
 
 export const createUserCart = async ({ userId, product }: {userId: string, product: ICartProduct}) => {
-    return await prisma.cart.create({
+    const cart = await prisma.cart.create({
         data: {
             userId,
-            cartProducts: {
-                create: product
-            },
             countProduct:1
         },
     });
+
+    createCartProduct({cartId:cart.id,product})
 };
 
 export const createCartProduct = async({ cartId, product }: {cartId: string, product: ICartProduct})=>{
+    const cartExists = await prisma.cart.findUnique({
+        where: { id: cartId },
+    });
+    
+    if (!cartExists) {
+        throw new Error(`Cart with ID ${cartId} does not exist.`);
+    }
     return await prisma.cartProduct.create({
         data:{
             productId: product.productId,
-            shopId: product.productId,
+            shopId: product.shopId,
             quantity: product.quantity,
             name: product.name,
             price: product.price,
-            cartId
+            cartId: cartId
         }
     })
 }

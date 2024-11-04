@@ -8,19 +8,19 @@ import { ICartProduct,ICartRequest } from "../controllers/cart.controller";
 class CartService{
     static async addToCart({ userId, product }: {userId: string, product: ICartProduct}){
         //check cart existed or not, if not, create new cart
-        const userCart = await getCart({userId})
+        const cart = await getCart({userId})
 
-        if(!userCart){
+        if(!cart){
             return createUserCart({userId, product})
         }
 
         //check wheather cart has product or not, if not, add product to cart
         const countProductInCart = await prisma.cartProduct.count({
-            where: {cartId:userCart.id}
+            where: {cartId:cart.id}
         })
 
         if(countProductInCart === 0){
-            return createCartProduct({cartId:userCart.id,product})
+            return createCartProduct({cartId:cart.id,product})
         }
 
         //check wheather product we're passing is cart existed in cart or not
@@ -32,14 +32,14 @@ class CartService{
             //increase count product by one
             await prisma.cart.update({
                 where:{
-                    id:userCart.id
+                    id:cart.id
                 },
                 data:{
-                    countProduct: userCart.countProduct +=1
+                    countProduct: cart.countProduct +=1
                 }
             })
             // add this product to cart
-            return createCartProduct({cartId:userCart.id,product})
+            return createCartProduct({cartId:cart.id,product})
         }
     }
 
@@ -54,16 +54,28 @@ class CartService{
         for(const element of shop_order_ids){
             //loop through each product of shop
             for(const eachShop of element.item_products){
-                await prisma.cartProduct.update({
-                    //composite 
+                const result = await prisma.cartProduct.update({
+                    //composite key means we combine more column to establish the uniqueness
                     where: {
                         cartId_productId: {
                             cartId: cart.id,
                             productId: eachShop.productId,
                         },
                     },
-                    data:{quantity: eachShop.quantity - eachShop.old_quantity}
+                    data:{
+                        quantity: {
+                            increment: eachShop.quantity - eachShop.old_quantity
+                        }
+                    }
                 })
+
+                if(result.quantity === 0){
+                    await prisma.cartProduct.delete({
+                        where:{
+                            id: result.id
+                        }
+                    })
+                }
             }
         }
     }
@@ -72,18 +84,21 @@ class CartService{
         //delete certain product in carts
         const cart = await getCart({userId})
 
+        if (!cart) {
+            throw new Error("Cart not found for user");
+        }
         await prisma.cart.update({
             where:{
                 userId
             },
             data:{
-                countProduct: cart!.countProduct -= 1
+                countProduct: cart.countProduct -= 1
             }
         })
         const deleteCart = await prisma.cartProduct.delete({
             where: {
                 cartId_productId: {
-                    cartId: cart!.id,
+                    cartId: cart.id,
                     productId: productId,
                 },
             },
