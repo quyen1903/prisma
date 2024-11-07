@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { prisma } from "../database/init.postgresql";
 import { getSelectData, unGetSelectData } from "../shared/utils";
+import { ICheckoutRequest, Ishop_order_ids } from "../controllers/checkout.controller";
+
 
 export const findAll = async(where: any, skip:number, take:number)=>{
     return await prisma.product.findMany({
@@ -66,4 +68,18 @@ export const getProductById = async (productId: string)=>{
             id:productId
         }
     })
+}
+
+export const checkProductByServer = async function(products:Ishop_order_ids['item_products']){
+    const result = await Promise.all(products.map(async product=>{
+        const foundProduct = await getProductById(product.productId)
+        if(foundProduct){
+            return{
+                price:foundProduct.productPrice,
+                quantity:product.quantity,
+                productId:product.productId
+            }
+        }
+    }))
+    return result as unknown as Ishop_order_ids['item_products'];
 }

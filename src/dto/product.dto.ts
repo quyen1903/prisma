@@ -102,7 +102,7 @@ export class UpdateProductDTO {
     @IsNotEmpty()
     @IsObject()
     @ValidateNested() // To recursively validate nested objects
-    productAttributes: Clothing | Electronics | Furniture;
+    productAttributes?: Clothing | Electronics | Furniture;
 
     constructor({
         productName,

@@ -164,7 +164,7 @@ class DiscountService {
         let totalOrder = 0
         if(discountMinOrderValue > 0){
             totalOrder = discountProducts!.reduce((accumulator, product)=>{
-                return accumulator + (product.discountQuantity * product.discountPrice)
+                return accumulator + (product.quantity * product.price)
             },0)
             if(totalOrder < discountMinOrderValue) {
                 throw new NotFoundError(`discount require a minimum order of ${discountMinOrderValue}`)

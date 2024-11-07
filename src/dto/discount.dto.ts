@@ -127,13 +127,13 @@ export class CreateDiscountDTO {
 
 class Product {
     @IsString()
-    discountProductId: string;
+    productId: string;
 
     @IsInt()
-    discountQuantity: number;
+    quantity: number;
 
     @IsNumber()
-    discountPrice: number;
+    price: number;
 }
 
 export class AmountDiscountDTO {

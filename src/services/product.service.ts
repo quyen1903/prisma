@@ -11,7 +11,7 @@ import {
     findProduct,
 //     updateProductById,
 } from "../repositories/product.repository";
-// import { insertInventory } from "../models/repository/inventory.repository";
+import { insertInventory } from '../repositories/inventory.repository';
 // import { Notifications } from "./notification.service";
 
 import { CreateProductDTO } from "../dto/product.dto";
@@ -81,7 +81,7 @@ class Factory {
 }
 
 class Product {
-    productAttributes: any;
+    productAttributes?: any;
     productDescription: string;
     productName: string;
     productPrice: number;
@@ -110,11 +110,11 @@ class Product {
         this.productType = productType;
     }
 
-    async createProduct(subClassId: string): Promise<any> {
+    // Create main product and return its ID
+    async createProduct(): Promise<any> {
         const newProduct = await prisma.product.create({
             data: {
-                id: subClassId,
-                productAttributes: this.productAttributes,
+                // productAttributes: this.productAttributes,
                 productDescription: this.productDescription,
                 productName: this.productName,
                 productPrice: this.productPrice,
@@ -124,7 +124,13 @@ class Product {
                 productType: this.productType as ProductType,
             }
         });
-
+        if(newProduct){
+            await insertInventory({
+                productId: newProduct.id,
+                stock: this.productQuantity,
+                location: "unknow"
+            })
+        }
         return newProduct;
     }
 
@@ -138,71 +144,121 @@ class Product {
 
 class Clothing extends Product {
     public async createProduct() {
+        const product = await super.createProduct();
+
         const newClothing = await prisma.clothing.create({
             data: {
                 ...this.productAttributes,
-                productShopId: this.productShop
+                productId: product.id,
             }
         });
-        return await super.createProduct(newClothing.id);
+
+        return { ...newClothing };
     }
     async updateProduct(productId: string) {
         const objectParams = removeUndefinedObject(this);
+        const currentProduct = await prisma.clothing.findUnique({
+            where:{productId}
+        })
+        if(!currentProduct) throw new BadRequestError('cant find updated product')
+
+        const updatedAttributes = {
+            ...currentProduct,
+            ...objectParams.productAttributes
+        };
+
         if (objectParams.productAttributes) {
             await prisma.clothing.update({
-                where: { id: productId },
-                data: flattenNestedObject(objectParams.productAttributes)
+                where: { productId },
+                data: {
+                    brand: updatedAttributes.brand,
+                    size: updatedAttributes.size,
+                    material: updatedAttributes.material
+                }
             });
         }
+        
         return await super.updateProduct(productId, objectParams);
     }
 }
 
 class Electronic extends Product {
     public async createProduct() {
+        const product = await super.createProduct();
+
         const newElectronic = await prisma.electronic.create({
             data: {
                 ...this.productAttributes,
-                productShopId: this.productShop
+                productId: product.id,
             }
         });
-        return await super.createProduct(newElectronic.id);
+
+        return { ...newElectronic };
     }
 
     async updateProduct(productId: string) {
         const objectParams = removeUndefinedObject(this);
+        const currentProduct = await prisma.electronic.findUnique({
+            where:{productId}
+        })
+        if(!currentProduct) throw new BadRequestError('cant find updated product')
+
+        const updatedAttributes = {
+            ...currentProduct,
+            ...objectParams.productAttributes
+        };
+
         if (objectParams.productAttributes) {
             await prisma.electronic.update({
-                where: { id: productId },
-                data: flattenNestedObject(objectParams.productAttributes)
+                where: { productId },
+                data: {
+                    manufacturer: updatedAttributes.manufacturer,
+                    model: updatedAttributes.model,
+                    color: updatedAttributes.color
+                }
             });
         }
+        
         return await super.updateProduct(productId, objectParams);
     }
 }
 
 class Furniture extends Product {
     public async createProduct() {
+        const product = await super.createProduct();
         const newFurniture = await prisma.furniture.create({
             data: {
                 ...this.productAttributes,
-                productShopId: this.productShop
+                productId: product.id,
             }
         });
-        
-        return await super.createProduct(newFurniture.id);
+
+        return { ...newFurniture };
     }
 
     async updateProduct(productId: string) {
         const objectParams = removeUndefinedObject(this);
-        console.log('flatten ', flattenNestedObject(objectParams.productAttributes))
+        const currentProduct = await prisma.furniture.findUnique({
+            where:{productId}
+        })
+        if(!currentProduct) throw new BadRequestError('cant find updated product')
+
+        const updatedAttributes = {
+            ...currentProduct,
+            ...objectParams.productAttributes
+        };
+
         if (objectParams.productAttributes) {
             await prisma.furniture.update({
-                where: { id: productId },
-                data: flattenNestedObject(objectParams.productAttributes)
+                where: { productId },
+                data: {
+                    brand: updatedAttributes.brand,
+                    size: updatedAttributes.size,
+                    material: updatedAttributes.material
+                }
             });
         }
-        
+        delete  objectParams.productAttributes
         return await super.updateProduct(productId, objectParams);
     }
 }

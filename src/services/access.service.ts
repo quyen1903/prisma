@@ -149,7 +149,7 @@ class AccessService{
             if(!keyStore) throw new Error('cannot generate keytoken');
 
             return{
-                shop:getInfoData(['uuid','email'],newShop),
+                shop:getInfoData(['id','email',],newShop),
                 tokens
             }
         }
