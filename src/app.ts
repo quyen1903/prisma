@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { IKeyToken } from './services/keyToken.service';
 import { IdecodeUser } from './middlewares/authentication.middleware';
+import { UserDecode, ShopDecode } from './shared/interface/decode.interface';
 import myLogger from './middlewares/mylogger.log';
 
 interface Iapikey {
@@ -21,7 +22,8 @@ declare global{
     namespace Express{   
         interface Request {
             keyStore: IKeyToken;
-            user: IdecodeUser;
+            user: UserDecode;
+            shop: ShopDecode;
             refreshToken: string;
             apiKey: Iapikey
             requestId: string

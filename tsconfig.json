@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2023",
-    "module": "commonjs",
+    // "module": "ES2022",
     "outDir": "./dist",
     "rootDir": ".",
     "esModuleInterop": true,
@@ -13,6 +13,7 @@
     "sourceMap": true,
     "incremental": true,
     "emitDecoratorMetadata": true,
+    "moduleResolution": "node"
   },
   "include": [
     "./src/**/*",

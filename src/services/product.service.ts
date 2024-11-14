@@ -5,11 +5,9 @@ import { removeUndefinedObject, flattenNestedObject } from "../shared/utils";
 import { 
     findAll,
     publish,
-
     searchProductByUser,
     findAllProducts,
     findProduct,
-//     updateProductById,
 } from "../repositories/product.repository";
 import { insertInventory } from '../repositories/inventory.repository';
 // import { Notifications } from "./notification.service";
@@ -28,6 +26,15 @@ interface Publish {
     isDraft?: boolean;
     isPublished?: boolean;
 }
+
+/*
+    Factory Method design pattern
+    the idea behind this pattern is replace createProduct and updateProduct method
+    of Factory class by Clothing/ Electronic/ Furniture class 
+    from Controller, when our data flow moving to service, Factory class
+    pick which sub class would be use base on http req body
+    this implementation based on polymorphism principle of OOP
+*/
 
 class Factory {
     private static productRegistry: { [keys: string]: any } = {}
@@ -177,7 +184,7 @@ class Clothing extends Product {
                 }
             });
         }
-        
+        delete  objectParams.productAttributes
         return await super.updateProduct(productId, objectParams);
     }
 }
@@ -218,7 +225,7 @@ class Electronic extends Product {
                 }
             });
         }
-        
+        delete  objectParams.productAttributes
         return await super.updateProduct(productId, objectParams);
     }
 }

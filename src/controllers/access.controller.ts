@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'; 
-import AccessService from "../services/access.service"
-import { SuccessResponse } from '../core/success.response'
+import { SuccessResponse } from '../core/success.response';
+import { shop } from '../services/account.service';
 
 export interface IAccessRequest{
     name: string;
@@ -12,9 +12,9 @@ class AccessController{
     handlerRefreshToken = async(req: Request, res: Response, next: NextFunction)=>{
         new SuccessResponse({
             message:'get token success',
-            metadata:await AccessService.handleRefreshToken(
+            metadata:await shop.account.handleRefreshToken(
                 req.keyStore,
-                req.user,
+                req.shop,
                 req.refreshToken,
             )
         }).send(res)
@@ -22,19 +22,19 @@ class AccessController{
     logout = async(req: Request, res: Response, next: NextFunction)=>{
         new SuccessResponse({
             message:'logout success',
-            metadata:await AccessService.logout( req.keyStore )
+            metadata:await shop.account.logout( req.keyStore )
         }).send(res)
     }
     login = async(req: Request, res: Response, next: NextFunction)=>{
         new SuccessResponse({
             message: 'login success',
-            metadata:await AccessService.login(req.body)
+            metadata: await shop.account.login(req.body)
         }).send(res)
     }
     register = async (req: Request, res: Response, next: NextFunction) => {
         new SuccessResponse({
             message: 'register success',
-            metadata: await AccessService.register(req.body)
+            metadata: await shop.account.register(req.body)
         }).send(res);
     }
 

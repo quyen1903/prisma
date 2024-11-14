@@ -178,14 +178,15 @@ class DiscountService {
                 throw new BadRequestError('this user already use this discount')
             }
         }
-
+        //discount value can not surpass 100%
+        if(discountType === "percentage" && discountValue > 100) throw new BadRequestError('sdiscount value can not surpass 100%')
         //check wheather discount is fixed amount
         const amount = discountType === 'fixed_amount' ? discountValue : totalOrder * (discountValue / 100)
 
         return {
-            totalOrder,
-            discount:amount,
-            totalPrice:totalOrder - amount
+            totalOrder,// discount percentage
+            discount:amount,// reduced money
+            totalPrice:totalOrder - amount//money user pay
         }
     }
 

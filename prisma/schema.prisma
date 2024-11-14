@@ -19,14 +19,14 @@ model Shop {
   createdAt DateTime  @map("created_at") @default(now())
   updatedAt DateTime  @map("updated_at") @updatedAt
 
-  keyToken  KeyToken? // Optional relation to KeyToken
+  keyToken  ShopKeyToken? // Optional relation to KeyToken
   discount  Discount[]
   products  Product[]
   @@map("shops")
 }
 
 // keyToken model with reference to shop uuid
-model KeyToken {
+model ShopKeyToken {
   id                String    @id  @unique @default(uuid())
 
   //1-1 relation with shop
@@ -39,7 +39,7 @@ model KeyToken {
   updatedAt         DateTime  @map("updated_at") @updatedAt
 
   // Define foreign key relationship to Shop model
-  @@map("key_tokens")
+  @@map("shop_key_tokens")
 }
 
 model APIkey {
@@ -143,14 +143,14 @@ model Discount {
   discountDescription     String            @map("discount_description")
   discountType            String            @map("discount_type") @default("fixed_amount")
   discountValue           Float             @map("discount_value")
-  discountCode            String            @unique @map("discount_code")
+  discountCode            String            @unique @map("discount_code") 
   discountStartDates      DateTime          @map("discount_start_dates")
   discountEndDates        DateTime          @map("discount_end_dates")
-  discountMaxUses         Int               @map("discount_max_uses")
-  discountUsesCount       Int               @map("discount_uses_count")
-  discountUsersUsed       String[]          @default([]) @map("discount_users_used")
+  discountMaxUses         Int               @map("discount_max_uses")//number of discount applied
+  discountUsesCount       Int               @map("discount_uses_count")//number of discount had been used
+  discountUsersUsed       String[]          @default([]) @map("discount_users_used")//who been used this discount
   discountMaxUsesPerUser  Int               @map("discount_max_uses_per_user")
-  discountMinOrderValue   Float             @map("discount_min_order_value")
+  discountMinOrderValue   Float             @map("discount_min_order_value")//min price of user's order to activate this discount
   discountShop            Shop              @relation(fields: [discountShopId], references: [id])
   discountShopId          String            @map("discount_shop")
   discountIsActive        Boolean           @default(true) @map("discount_is_active") 
@@ -163,15 +163,12 @@ model Discount {
 }
 
 model Cart {
-  id   String    @id  @unique @default(uuid())
-
-  state             CartState @default(ACTIVE)  @map("cart_state")
-  countProduct      Int        @default(0) @map("cart_count_product")
-
-  user  User  @relation(fields: [userId], references: [id])
-  userId            String        @unique  @map("cart_userId")
-  
-  cartProducts    CartProduct[]
+  id            String    @id  @unique @default(uuid())
+  state         CartState @default(ACTIVE)  @map("cart_state")
+  countProduct  Int       @default(0) @map("cart_count_product")
+  user          User      @relation(fields: [userId], references: [id])
+  userId        String    @unique  @map("cart_userId")
+  cartProducts  CartProduct[]
 
   createdAt DateTime  @map("created_at") @default(now())
   updatedAt DateTime  @map("updated_at") @updatedAt
@@ -180,16 +177,14 @@ model Cart {
 }
 
 model CartProduct {
-  id   String    @id  @unique @default(uuid())
-
-  productId String  @map("cart_product_productId")
-  shopId    String  @map("cart_product_shopId")
-  quantity  Int @map("cart_product_quantity")
-  name      String  @map("cart_product_name")
-  price     Float @map("cart_product_price")
-
-  cart  Cart  @relation(fields: [cartId], references: [id])
-  cartId    String @map("cart_product_cartId")
+  id        String    @id  @unique @default(uuid())
+  productId String    @map("cart_product_productId")
+  shopId    String    @map("cart_product_shopId")
+  quantity  Int       @map("cart_product_quantity")
+  name      String    @map("cart_product_name")
+  price     Float     @map("cart_product_price")
+  cart      Cart      @relation(fields: [cartId], references: [id])
+  cartId    String    @map("cart_product_cartId")
 
   createdAt DateTime  @map("created_at") @default(now())
   updatedAt DateTime  @map("updated_at") @updatedAt
@@ -198,60 +193,48 @@ model CartProduct {
 }
 
 model Order {
-  id   String    @id  @unique @default(uuid())
+  id                  String    @id  @unique @default(uuid())
+  orderUserId         String    @map("order_userId")
+  orderCheckout       Json      @map("order_checkout")
+  orderPayment        Json      @map("order_payment")
+  orderProduct        String[]  @map("order_product")
+  orderTrackingNumber String    @map("order_trackingNumber")
+  orderStatus         String    @map("order_status")
 
-  orderUserId String  @map("order_userId")
-  orderCheckout Json  @map("order_checkout")
-  orderPayment  Json  @map("order_payment")
-  orderProduct  String[]  @map("order_product")
-  orderTrackingNumber String  @map("order_trackingNumber")
-  orderStatus String  @map("order_status")
-
-  createdAt DateTime  @map("created_at") @default(now())
-  updatedAt DateTime  @map("updated_at") @updatedAt
+  createdAt           DateTime  @map("created_at") @default(now())
+  updatedAt           DateTime  @map("updated_at") @updatedAt
 
   @@map("order")
 }
 
 model User {
-  id   String    @id  @unique @default(uuid())
-
-  name      String  @map("user_name")
-  email     String  @map("user_email")  @unique()
-  password  String  @map("user_password")
-  salt      String  @map("user_salt")
-  phone String  @map("user_phone")
-  sex String  @map("user_sex")
-  avatar  String  @map("user_avatar")
+  id          String    @id  @unique @default(uuid())
+  name        String    @map("user_name")
+  email       String    @map("user_email")  @unique()
+  password    String    @map("user_password")
+  salt        String    @map("user_salt")
+  phone       String    @unique @map("user_phone")
+  sex         Sex       @map("user_sex")
+  avatar      String    @map("user_avatar")
   dateOfBirth DateTime  @map("user_date_of_birth")
-  status  Status  @map("user_status")
-
-  createdAt DateTime  @map("created_at") @default(now())
-  updatedAt DateTime  @map("updated_at") @updatedAt
+  status      Status    @default(ACTIVE)@map("user_status")
+  createdAt   DateTime  @map("created_at") @default(now())
+  updatedAt   DateTime  @map("updated_at") @updatedAt
 
   userKeyToken  UserKeyToken?
   cart  Cart?
-  // keytoken  KeyToken?
   @@map("users")
 }
 
 model UserKeyToken {
-  id   String    @id  @unique @default(uuid())
-
-  //1-1 relation with shop
-  user  User @relation(fields: [userId],references: [id])
-  userId            String  @unique @map("key_user")
-
-  // user  User  @relation(fields: [userId], references: [id])
-  // userId  String  @unique @map("key_user")
-
+  id                String    @id  @unique @default(uuid())
+  user              User      @relation(fields: [userId],references: [id])
+  userId            String    @unique @map("key_user")
   publicKey         String
-  refreshTokensUsed String[] @default([])
+  refreshTokensUsed String[]  @default([])
   refreshToken      String
-  createdAt DateTime  @map("created_at") @default(now())
-  updatedAt DateTime  @map("updated_at") @updatedAt
-
-  // Define foreign key relationship to Shop model
+  createdAt         DateTime  @map("created_at") @default(now())
+  updatedAt         DateTime  @map("updated_at") @updatedAt
   @@map("user_key_tokens")
 }
 
@@ -284,4 +267,9 @@ enum ProductType {
 enum DiscountAppliesTo {
   all
   specific
+}
+
+enum Sex {
+  MALE
+  FEMALE
 }

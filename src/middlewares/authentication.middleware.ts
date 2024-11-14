@@ -4,6 +4,7 @@ import ApiKey from '../services/apikey.service';
 import asyncHandler from '../shared/helper/async.handler'
 import { AuthFailureError, NotFoundError } from '../core/error.response'
 import  KeyTokenService  from '../services/keyToken.service'
+import { ShopDecode } from '../shared/interface/decode.interface';
 
 const HEADER ={
     API_KEY : 'x-api-key',
@@ -13,7 +14,7 @@ const HEADER ={
 }
 
 export interface IdecodeUser{
-    userId: string,
+    shopId: string,
     email: string,
     iat: number,
     exp: number
@@ -88,10 +89,10 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
     if(req.headers[HEADER.REFRESHTOKEN]){
         try {
             const refreshToken = req.headers[HEADER.REFRESHTOKEN] as string
-            const decodeUser = JWT.verify(refreshToken ,keyStore.publicKey) as IdecodeUser
-            if(userId !== decodeUser.userId ) throw new AuthFailureError('Invalid User Id')
+            const decodeUser = JWT.verify(refreshToken ,keyStore.publicKey) as ShopDecode
+            if(userId !== decodeUser.shopId ) throw new AuthFailureError('Invalid User Id')
             req.keyStore = keyStore
-            req.user = decodeUser
+            req.shop = decodeUser
             req.refreshToken = refreshToken
             return next()
         } catch (error) {
@@ -104,10 +105,10 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
     if(!accessToken) throw new AuthFailureError('Invalid Request')
 
     try {
-        const decodeUser = JWT.verify(accessToken,keyStore.publicKey) as IdecodeUser
-        if( userId !== decodeUser.userId ) throw new AuthFailureError('Invalid User Id');
+        const decodeUser = JWT.verify(accessToken,keyStore.publicKey) as ShopDecode
+        if( userId !== decodeUser.shopId ) throw new AuthFailureError('Invalid User Id');
         req.keyStore = keyStore
-        req.user = decodeUser
+        req.shop = decodeUser
         return next()
     } catch (error) {
         throw error

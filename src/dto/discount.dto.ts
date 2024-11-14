@@ -26,10 +26,6 @@ export class CreateDiscountDTO {
     @IsString()
     discountCode: string;
 
-    @IsNumber()
-    @IsNotEmpty()
-    discountMaxValue: number;
-
     @IsString()
     @IsNotEmpty()
     discountStartDate: string;
@@ -77,7 +73,6 @@ export class CreateDiscountDTO {
         discountType,
         discountValue,
         discountCode,
-        discountMaxValue,
         discountStartDate,
         discountEndDate,
         discountMaxUses,
@@ -94,7 +89,6 @@ export class CreateDiscountDTO {
         discountType: string;
         discountValue: number;
         discountCode: string;
-        discountMaxValue: number;
         discountStartDate: string;
         discountEndDate: string;
         discountMaxUses: number;
@@ -111,7 +105,6 @@ export class CreateDiscountDTO {
         this.discountType = discountType;
         this.discountValue = discountValue;
         this.discountCode = discountCode;
-        this.discountMaxValue = discountMaxValue;
         this.discountStartDate = discountStartDate;
         this.discountEndDate = discountEndDate;
         this.discountMaxUses = discountMaxUses;

@@ -19,29 +19,32 @@ export const insertInventory = async ({
 }
 
 //this function subtract number of quantity which user order
-export const reservationInventory = async ({
-    productId,
-    quantity,
-    cartId
-}:{
+export const reservationInventory = async ({ productId, quantity, cartId }: {
     productId: string,
     quantity: number,
     cartId: string
-})=>{
-    return prisma.inventory.update({
-        where:{
-            inventoryProductId: productId,
-        },
-        data:{
-            inventoryStock:{ increment: -quantity },
-            inventoryReservations:[{
-                push:true,
-                set:{
-                    quantity,
-                    cartId,
-                    create_on:new Date()
+}) => {
+    try {
+        const result = await prisma.inventory.update({
+            where: {
+                inventoryProductId: productId,
+            },
+            data: {
+                inventoryStock: { increment: -quantity },
+                inventoryReservations: {
+                    push: {
+                        quantity,
+                        cartId,
+                        create_on: new Date(),
+                    }
                 }
-            }]
-        }
-    })
+            }
+        });
+
+        // If result is returned, the update was successful
+        return result;
+    } catch (error) {
+        console.error('Failed to reserve inventory:', error);
+        return null;
+    }
 }

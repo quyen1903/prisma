@@ -11,7 +11,7 @@ class ProductController{
         await validator(payload)
         const result = await Factory.createProduct(payload.productType,{
             ...payload,
-            productShop: req.user.userId
+            productShop: req.shop.shopId
         })
 
         new SuccessResponse({
@@ -25,7 +25,7 @@ class ProductController{
         await validator(payload)
         const result = await Factory.updateProduct(payload.productType, req.params.productId, {
             ...payload,
-            product_shop: req.user.userId
+            product_shop: req.shop.shopId
         })
 
         new SuccessResponse({
@@ -38,7 +38,7 @@ class ProductController{
         new SuccessResponse({
             message: ' Publish product success!',
             metadata: await Factory.publishProductByShop({
-                productShopId: req.user.userId,
+                productShopId: req.shop.shopId,
                 uuid: req.params.id,
             })
         }).send(res)
@@ -48,7 +48,7 @@ class ProductController{
         new SuccessResponse({
             message: 'Undo publish product success!',
             metadata: await Factory.unPublishProductByShop({
-                productShopId: req.user.userId,
+                productShopId: req.shop.shopId,
                 uuid: req.params.id,
             })
         }).send(res)
@@ -58,7 +58,7 @@ class ProductController{
         new SuccessResponse({
             message: 'Get list Draft success',
             metadata: await Factory.findAllDraftsForShop({
-                productShopId:req.user.userId
+                productShopId:req.shop.shopId
             })
         }).send(res)
     }
@@ -67,7 +67,7 @@ class ProductController{
         new SuccessResponse({
             message: 'Get list publish success',
             metadata: await Factory.findAllPublishForShop({
-                productShopId:req.user.userId
+                productShopId:req.shop.shopId
             })
         }).send(res)
     }

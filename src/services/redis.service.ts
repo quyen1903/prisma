@@ -30,17 +30,26 @@ const redlock = new Redlock(
  */
 export const acquireLock = async (productId: string, quantity: number, cartId: string) => {
     const resource = `locks:product:${productId}`;
-    for (let i = 0; i < 10; i++) {
+    const retryTime = 10;
+    const expireTime = 3000;
+    
+    for (let i = 0; i < retryTime; i++) {
         try {
-            const lock = await redlock.acquire([resource], 1000);
+            const lock = await redlock.acquire([resource], expireTime);
             console.log(`Acquired lock:`, lock);
+            
             try {
-                const isReservation = await reservationInventory({ productId, quantity, cartId });
-                if (isReservation.modifiedCount) {
+                const reservationResult = await reservationInventory({ productId, quantity, cartId });
+                
+                if (reservationResult && reservationResult.inventoryStock >= 0) { 
+                    // If reservationResult is returned and inventoryStock was modified successfully
                     await lock.release();
                     console.log(`Lock released for product ${productId}`);
+                    return reservationResult;  // Return the result to indicate success
                 }
-                return null;
+                
+                await lock.release();
+                console.log(`Lock released but reservation was not successful.`);
             } catch (error) {
                 await lock.release();
                 console.error('Error during reservation:', error);
@@ -50,6 +59,7 @@ export const acquireLock = async (productId: string, quantity: number, cartId: s
             await new Promise(resolve => setTimeout(resolve, 50));
         }
     }
+    
     throw new Error('Failed to acquire lock after multiple attempts');
 }
 

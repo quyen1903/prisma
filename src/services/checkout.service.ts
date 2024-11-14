@@ -3,31 +3,36 @@ import  { getCart } from '../repositories/cart.repository'
 import { BadRequestError } from '../core/error.response';
 import { checkProductByServer } from '../repositories/product.repository';
 import DiscountService from './discount.service';
-import { ICheckoutRequest, Ishop_order_ids } from '../controllers/checkout.controller';
+import { ICheckoutRequest, IshopOrderIds } from '../controllers/checkout.controller';
 import { acquireLock, releaseLock } from './redis.service';
 
 
 class CheckoutService{
-    static async checkoutReview({ cartId, userId, shop_order_ids}: ICheckoutRequest){
+    static async checkoutReview({ cartId, userId, shopOrderIds}: ICheckoutRequest){
         //check cart id existed?
         const cart = await getCart(cartId);
         if(!cart) throw new BadRequestError('Cart does not existed!!')
 
+        /**
+         * user can buy many product from many shop
+         * checkout will return array of product and price
+         *  
+         */
         const checkout_order = {
             totalPrice:0,
             feeShip:0,
             totalDiscount:0,
-            totalCheckout:0//
-        },shop_order_ids_new = []
+            totalCheckout:0
+        },shopOrderIdsNew = []
 
         //total bill fee
-        for(let i = 0; i < shop_order_ids.length; i++){
-            const {shopId, shop_discounts, item_products} = shop_order_ids[i]
+        for(let i = 0; i < shopOrderIds.length; i++){
+            const {shopId, shopDiscounts, itemProducts} = shopOrderIds[i]
             /**
              * check product available
              * it return price, quantity and productId
             */
-            const checkProductServer = await checkProductByServer(item_products)
+            const checkProductServer = await checkProductByServer(itemProducts)
             if(!checkProductServer[0]) throw new BadRequestError('order wrong !!!')
 
             //total fee order
@@ -43,21 +48,25 @@ class CheckoutService{
             //push to new shop_orders_ids_new
             const itemCheckout = {
                 shopId,
-                shop_discounts,
+                shopDiscounts,
                 priceRaw: checkoutPrice,
                 priceApplyDiscount:checkoutPrice,
-                item_products:checkProductServer
+                itemProducts:checkProductServer
             }
 
             //if shop_discounts > 0, check wheather valid
-            if (shop_discounts.length > 0){
-                //assum we only have 1 discount
-                const { totalPrice = 0, discount = 0} = await DiscountService.getDiscountAmount({
-                    discountCode:shop_discounts[0].codeId,
-                    discountUserId:userId,
-                    discountShopId:shopId,
-                    discountProducts: checkProductServer
-                })
+            let discount = 0;
+            if (shopDiscounts.length > 0){
+                for(let i = 0; i<=shopDiscounts.length; i++){
+                    const result = await DiscountService.getDiscountAmount({
+                        discountCode:shopDiscounts[0].codeId,
+                        discountUserId:userId,
+                        discountShopId:shopId,
+                        discountProducts: checkProductServer
+                    })
+                    discount += result.discount
+                }
+
                 //total discount amout
                 checkout_order.totalDiscount += discount
 
@@ -68,64 +77,64 @@ class CheckoutService{
             }
             //total final fee
             checkout_order.totalCheckout += itemCheckout.priceApplyDiscount
-            shop_order_ids_new.push(itemCheckout)
+            shopOrderIdsNew.push(itemCheckout)
         }
         return{
-            shop_order_ids,
-            shop_order_ids_new,
+            shopOrderIds,
+            shopOrderIdsNew,
             checkout_order
         }
     }
     
-    static async orderByUser({ 
-        shop_order_ids, 
-        cartId, userId, 
-        user_address = {}, 
-        user_payment = {} 
-    }:{
-        shop_order_ids: Ishop_order_ids[]
-        cartId: string;
-        userId: string;
-        user_address: {};
-        user_payment: {};
-    }){
-        const { shop_order_ids_new, checkout_order} = await CheckoutService.checkoutReview({
-            cartId,
-            userId,
-            shop_order_ids
-        })
-        //apply callback to each element of array and flattern result by one level
-        const products = shop_order_ids_new.flatMap(order => order.item_products);
-        const accquireProduct = []
+    // static async orderByUser({ 
+    //     shop_order_ids, 
+    //     cartId, userId, 
+    //     user_address = {}, 
+    //     user_payment = {} 
+    // }:{
+    //     shop_order_ids: Ishop_order_ids[]
+    //     cartId: string;
+    //     userId: string;
+    //     user_address: {};
+    //     user_payment: {};
+    // }){
+    //     const { shop_order_ids_new, checkout_order} = await CheckoutService.checkoutReview({
+    //         cartId,
+    //         userId,
+    //         shop_order_ids
+    //     })
+    //     //apply callback to each element of array and flattern result by one level
+    //     const products = shop_order_ids_new.flatMap(order => order.item_products);
+    //     const accquireProduct = []
         
-        for(let i = 0; i < products.length; i++){
-            const { productId, quantity } = products[i];
-            const keyLock = await acquireLock(productId, quantity, cartId);
-            accquireProduct.push( keyLock ? true : false)
-            if(keyLock){
-                await releaseLock(keyLock)
-            }
-        }
+    //     for(let i = 0; i < products.length; i++){
+    //         const { productId, quantity } = products[i];
+    //         const keyLock = await acquireLock(productId, quantity, cartId);
+    //         accquireProduct.push( keyLock ? true : false)
+    //         if(keyLock){
+    //             await releaseLock(keyLock)
+    //         }
+    //     }
 
-        //check
-        if(accquireProduct.includes(false)){
-            throw new BadRequestError('some product has been updated')
-        }
+    //     //check
+    //     if(accquireProduct.includes(false)){
+    //         throw new BadRequestError('some product has been updated')
+    //     }
 
-        const newOrder = await prisma.order.create({
-            data:{
-                orderUserId: userId,
-                orderCheckout: checkout_order,
-                order_shipping:user_address,
-                order_payment:user_payment,
-                order_products:shop_order_ids_new    
-            }
-        })
+    //     const newOrder = await prisma.order.create({
+    //         data:{
+    //             orderUserId: userId,
+    //             orderCheckout: checkout_order,
+    //             order_shipping:user_address,
+    //             order_payment:user_payment,
+    //             order_products:shop_order_ids_new    
+    //         }
+    //     })
 
-        //if insert success, remove product inside cart
-        if(newOrder) 
-        return newOrder
-    }
+    //     //if insert success, remove product inside cart
+    //     if(newOrder) 
+    //     return newOrder
+    // }
 
     // static async getOrdersByUser(){
 

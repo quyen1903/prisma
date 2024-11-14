@@ -5,17 +5,17 @@ import { SuccessResponse } from '../core/success.response';
 export interface ICheckoutRequest{
     cartId: string;
     userId: string,
-    shop_order_ids:Ishop_order_ids[];
+    shopOrderIds: IshopOrderIds[];
 }
 
-export interface Ishop_order_ids{
+export interface IshopOrderIds{
     shopId: string;
-    shop_discounts:{
+    shopDiscounts:{
         shop_id: string,
         discountId: string,
         codeId: string
     }[];
-    item_products:{
+    itemProducts:{
         productId: string,
         quantity: number,
         price: number,

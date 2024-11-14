@@ -9,9 +9,8 @@ export interface IKeyToken{
 }
 
 class KeyTokenService{
-
     static createKeyToken = async ({ shopId, publicKey , refreshToken }: IKeyToken) => {
-        return await prisma.keyToken.upsert ({
+        return await prisma.shopKeyToken.upsert ({
             where: { shopId },
             update: { publicKey, refreshToken }, // If it exists, update the record
             create: { shopId, publicKey, refreshToken }, // If it doesn't exist, create a new one
@@ -19,7 +18,7 @@ class KeyTokenService{
     };
 
     static findByUserId = async (shopId: string)=> {
-        return await prisma.keyToken.findFirst({
+        return await prisma.shopKeyToken.findFirst({
             where:{
                 shopId
             }
@@ -27,12 +26,12 @@ class KeyTokenService{
     }
 
     static removeKeyByUUID = async(shopId: string)=>{
-        const keyToken = await prisma.keyToken.findFirst({
+        const keyToken = await prisma.shopKeyToken.findFirst({
             where: { shopId }
         });
     
         if (keyToken) {
-            return await prisma.keyToken.delete({
+            return await prisma.shopKeyToken.delete({
                 where: { id: keyToken.id }
             });
         } else {
@@ -41,7 +40,7 @@ class KeyTokenService{
     }
     
     static findByRefreshTokenUsed = async(refreshToken: IKeyToken['refreshToken'])=>{
-        return await prisma.keyToken.findFirst({
+        return await prisma.shopKeyToken.findFirst({
             where:{
                 refreshTokensUsed:{
                     has:refreshToken
@@ -51,7 +50,7 @@ class KeyTokenService{
     }
 
     static findByRefreshToken = async(refreshToken: IKeyToken['refreshToken'])=>{
-        return await prisma.keyToken.findFirst({
+        return await prisma.shopKeyToken.findFirst({
             where:{refreshToken}
         })
     }
