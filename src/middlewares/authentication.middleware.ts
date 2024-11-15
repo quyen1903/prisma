@@ -3,8 +3,8 @@ import JWT from 'jsonwebtoken'
 import ApiKey from '../services/apikey.service';
 import asyncHandler from '../shared/helper/async.handler'
 import { AuthFailureError, NotFoundError } from '../core/error.response'
-import  KeyTokenService  from '../services/keyToken.service'
-import { ShopDecode } from '../shared/interface/decode.interface';
+import { shop, user } from '../services/account.service';
+import { Decode } from '../shared/interface/decode.interface';
 
 const HEADER ={
     API_KEY : 'x-api-key',
@@ -14,13 +14,13 @@ const HEADER ={
 }
 
 export interface IdecodeUser{
-    shopId: string,
+    accountId: string,
     email: string,
     iat: number,
     exp: number
 }
 
-export const apiKey = async (req: Request, res: Response, next: NextFunction) => {
+export async function apiKey (req: Request, res: Response, next: NextFunction){
     const key = req.headers[HEADER.API_KEY]?.toString() as string
     
     if (!key) {
@@ -41,8 +41,7 @@ export const apiKey = async (req: Request, res: Response, next: NextFunction) =>
     next(); // Pass control to the next middleware or route handler
 };
 
-
-export const permission = ( permission: '0000' |'1111' |'2222' )=>{
+export function permission( permission: '0000' |'1111' |'2222' ){
     return(req: Request, res: Response, next: NextFunction)=>{
         if(!req.apiKey.permission){
             res.status(403).json({
@@ -61,7 +60,6 @@ export const permission = ( permission: '0000' |'1111' |'2222' )=>{
     }
 }
 
-
 export const authentication = asyncHandler(async(req:Request, res: Response, next: NextFunction)=>{
     /* 
     1 - check userId misssing
@@ -78,19 +76,19 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
     */
 
     //1
-    const userId = req.headers[HEADER.CLIENT_ID] as string
-    if(!userId) throw new AuthFailureError('Invalid Request, missing client ID')    
+    const accountId = req.headers[HEADER.CLIENT_ID] as string
+    if(!accountId) throw new AuthFailureError('Invalid Request, missing client ID')    
 
     //2
-    const keyStore = await KeyTokenService.findByUserId(userId)
+    const keyStore = await shop.token.findByAccountId(accountId)
     if(!keyStore) throw new NotFoundError('Not Found Keystore')
 
     //3
     if(req.headers[HEADER.REFRESHTOKEN]){
         try {
             const refreshToken = req.headers[HEADER.REFRESHTOKEN] as string
-            const decodeUser = JWT.verify(refreshToken ,keyStore.publicKey) as ShopDecode
-            if(userId !== decodeUser.shopId ) throw new AuthFailureError('Invalid User Id')
+            const decodeUser = JWT.verify(refreshToken ,keyStore.publicKey) as Decode
+            if(accountId !== decodeUser.accountId ) throw new AuthFailureError('Invalid User Id')
             req.keyStore = keyStore
             req.shop = decodeUser
             req.refreshToken = refreshToken
@@ -105,8 +103,8 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
     if(!accessToken) throw new AuthFailureError('Invalid Request')
 
     try {
-        const decodeUser = JWT.verify(accessToken,keyStore.publicKey) as ShopDecode
-        if( userId !== decodeUser.shopId ) throw new AuthFailureError('Invalid User Id');
+        const decodeUser = JWT.verify(accessToken,keyStore.publicKey) as Decode
+        if( accountId !== decodeUser.accountId ) throw new AuthFailureError('Invalid User Id');
         req.keyStore = keyStore
         req.shop = decodeUser
         return next()
@@ -114,3 +112,9 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
         throw error
     }
 })
+
+
+
+
+
+

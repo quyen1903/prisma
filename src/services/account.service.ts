@@ -6,8 +6,8 @@ import { getInfoData } from "../shared/utils";
 import { BadRequestError, AuthFailureError, NotFoundError, ForbiddenError } from "../core/error.response";
 import { JsonWebToken } from '../auth/authUtils';
 import { RoleShop, IAccountBase } from '../shared/interface/account.interface';
-import { KeyToken, ShopKeyToken, UserKeyToken } from '../shared/interface/keyToken.interface';
-import { Decode, ShopDecode, UserDecode } from '../shared/interface/decode.interface';
+import { KeyToken } from '../shared/interface/keyToken.interface';
+import { Decode } from '../shared/interface/decode.interface';
 
 interface IAccount {
     login(data: IAccountBase):Promise <void>| {};
@@ -21,7 +21,7 @@ interface IShopAccount extends IAccount{
 
 interface IToken {
     createKeyToken({ publicKey , refreshToken }: KeyToken): Promise<{}>;
-    findByAccountId(data: string): Promise<{} | null>
+    findByAccountId(data: string): Promise<any> | {}
 }
 
 interface AbstractFactory {
@@ -49,15 +49,9 @@ class UserFactory implements AbstractFactory {
     }
 }
 
-class ShopAccount implements IShopAccount {
-    private async findShop( email: string ){
-        return await prisma.shop.findFirst({
-            where: { email: email}
-        })
-    };
 
-    
-    private hashPassword(password:string, salt:string):Promise<string> {
+class AccountFactory{
+    hashPassword(password:string, salt:string):Promise<string> {
         return new Promise((resolve, reject) => {
             crypto.pbkdf2(password, salt, 100,64,'sha512', (err, key) => {
                 if (err) return  reject(err)
@@ -66,7 +60,7 @@ class ShopAccount implements IShopAccount {
         });
     }
 
-    private generateKeyPair(){
+    generateKeyPair(){
         const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',{
             modulusLength:4096,
             publicKeyEncoding:{
@@ -81,27 +75,47 @@ class ShopAccount implements IShopAccount {
         return {publicKey, privateKey}
     }
 
-    private shopTokenService(){
-        return new ShopToken()
+    async find(modelName: 'shop' | 'user' | 'product', whereClause: any){
+        return (prisma as any)[modelName].findFirst({
+            where: {email:whereClause},
+          });
+        
     }
 
-    async handleRefreshToken( keyStore: ShopKeyToken, shop: ShopDecode, refreshToken: string ){
+    shopTokenService(){
+        return new ShopToken()
+    }
+    async findUser( email: string ){
+        return await prisma.user.findFirst({
+            where: { email: email}
+        })
+    };
+
+    userTokenService(){
+        return new UserToken()
+    }
+
+}
+
+class ShopAccount extends AccountFactory implements IShopAccount  {
+
+    async handleRefreshToken( keyStore: KeyToken, shop: Decode, refreshToken: string ){
         //1 check wheather user's token been used or not, if been used, remove key and for them to relogin
-        const {shopId, email} = shop;
+        const {accountId, email} = shop;
         const shopToken = new ShopToken();
         if(keyStore.refreshTokensUsed!.includes(refreshToken)){
-            await shopToken.removeKeyByUUID(shopId)
+            await shopToken.removeKeyByUUID(accountId)
             throw new ForbiddenError('Something wrong happended, please relogin')
         }
 
         //2 if user's token is not valid token, force them to relogin, too
         if(keyStore.refreshToken !== refreshToken)throw new AuthFailureError('something was wrong happended, please relogin')
-        const foundShop = await this.findShop(email)
+        const foundShop = await this.find("shop",email)
         if(!foundShop) throw new AuthFailureError('shop not registed');
 
         //3 if this accesstoken is valid, create new accesstoken, refreshtoken
         const { publicKey, privateKey } = this.generateKeyPair()
-        const tokens = JsonWebToken.createShoptoken({shopId,email},publicKey,privateKey)
+        const tokens = JsonWebToken.createToken({accountId: accountId,email},publicKey,privateKey)
 
         //4 update keytoken in database
         const updateQuery = `
@@ -111,31 +125,32 @@ class ShopAccount implements IShopAccount {
             "refreshTokensUsed" = array_append("refreshTokensUsed", $3)
         WHERE "shopId" = $4
         `;
-        await pg.query(updateQuery, [publicKey, tokens.refreshToken, refreshToken, shopId]);
+        await pg.query(updateQuery, [publicKey, tokens.refreshToken, refreshToken, accountId]);
         return {
             shop,
             tokens  
         }
     };
 
-    async logout ( keyStore: ShopKeyToken ){
+    async logout ( keyStore: KeyToken ){
         const shopTokenService = this.shopTokenService();        
-        const delKey = await shopTokenService.removeKeyByUUID(keyStore.shopId );
+        const delKey = await shopTokenService.removeKeyByUUID(keyStore.accountId );
         return delKey 
     };
 
     async login(login: ShopLoginDTO){
-        const foundShop = await this.findShop(login.email);
+        const foundShop = await this.find("shop",login.email);
         if(!foundShop) throw new BadRequestError('Shop not registed');
 
         const passwordHashed =await this.hashPassword(login.password, foundShop.salt);
         if (passwordHashed !== foundShop.password) throw new AuthFailureError('Wrong password!!!');
 
         const { publicKey, privateKey } = this.generateKeyPair();
-        const tokens = JsonWebToken.createShoptoken({shopId: foundShop.id,email: login.email}, publicKey, privateKey);
+        const tokens = JsonWebToken.createToken({accountId: foundShop.id,email: login.email}, publicKey, privateKey);
+
         const shopTokenService = this.shopTokenService();
         await shopTokenService.createKeyToken({
-            shopId: foundShop.id,
+            accountId: foundShop.id,
             publicKey,
             refreshToken:tokens.refreshToken,
         })
@@ -147,7 +162,7 @@ class ShopAccount implements IShopAccount {
     }
 
     async register(register: ShopRegisterDTO) {
-        const shopHolder = await this.findShop(register.email);
+        const shopHolder = await this.find("shop",register.email);
         if(shopHolder) throw new BadRequestError('Shop already existed');
 
         const salt = crypto.randomBytes(32).toString('hex')
@@ -165,11 +180,11 @@ class ShopAccount implements IShopAccount {
 
         if(newShop){
             const { publicKey, privateKey } = this.generateKeyPair();
-            const tokens = JsonWebToken.createShoptoken({shopId:newShop.id, email: newShop.email},publicKey, privateKey)
+            const tokens = JsonWebToken.createToken({accountId:newShop.id, email: newShop.email},publicKey, privateKey)
             if(!tokens)throw new BadRequestError('create tokens error!!!!!!')
             const shopTokenService = this.shopTokenService();
             const keyStore = await shopTokenService.createKeyToken({
-                shopId: newShop.id,
+                accountId: newShop.id,
                 publicKey:publicKey,
                 refreshToken:tokens.refreshToken
             })
@@ -188,117 +203,133 @@ class ShopAccount implements IShopAccount {
 }
 
 // UserAccount.ts
-class UserAccount implements IAccount {
-    async login(data: UserRegisterDTO) { }
-    async register(data: UserLoginDTO) { /* User-specific registration */ }
-    async logout(data: UserKeyToken) { /* User-specific logout */ }
-}
+class UserAccount extends AccountFactory implements IAccount {
+    async logout ( keyStore: KeyToken ){
+        const userTokenService = this.userTokenService();        
+        const delKey = await userTokenService.removeKeyByUUID(keyStore.accountId );
+        return delKey 
+    };
 
-// ShopToken.ts
-class ShopToken implements IToken {
-    async createKeyToken({ shopId, publicKey , refreshToken }: ShopKeyToken) {
-        const result =  await prisma.shopKeyToken.upsert ({
-            where: { shopId },
-            update: { publicKey, refreshToken }, // If it exists, update the record
-            create: { shopId, publicKey, refreshToken }, // If it doesn't exist, create a new one
-        });
-        return result
-     }
-    async findByAccountId(shopId: string) {
-        return await prisma.shopKeyToken.findFirst({
-            where:{
-                shopId
-            }
+    async login(login: UserRegisterDTO) {
+        const foundUser = await this.find("user",login.email);
+        if(!foundUser) throw new BadRequestError('Shop not registed');
+
+        const passwordHashed =await this.hashPassword(login.password, foundUser.salt);
+        if (passwordHashed !== foundUser.password) throw new AuthFailureError('Wrong password!!!');
+
+        const { publicKey, privateKey } = this.generateKeyPair();
+        const tokens = JsonWebToken.createToken({accountId: foundUser.id,email: login.email}, publicKey, privateKey);
+
+        const shopTokenService = this.shopTokenService();
+        await shopTokenService.createKeyToken({
+            accountId: foundUser.id,
+            publicKey,
+            refreshToken:tokens.refreshToken,
         })
-    }
 
-    async removeKeyByUUID (shopId: string){
-        const keyToken = await prisma.shopKeyToken.findFirst({
-            where: { shopId }
-        });
-    
-        if (keyToken) {
-            return await prisma.shopKeyToken.delete({
-                where: { id: keyToken.id }
-            });
-        } else {
-            throw new NotFoundError("KeyToken not found");
+        return{
+            shop:getInfoData(['uuid','email'],foundUser),
+            tokens
         }
     }
-    
-    async findByRefreshTokenUsed(refreshToken: ShopKeyToken['refreshToken']){
-        return await prisma.shopKeyToken.findFirst({
-            where:{
-                refreshTokensUsed:{
-                    has:refreshToken
-                }
+
+    async register(register: UserRegisterDTO) {
+        const userHolder = await this.find("user",register.email);
+        if(userHolder) throw new BadRequestError('User already existed');
+
+        const salt = crypto.randomBytes(32).toString('hex')
+        const passwordHashed = await this.hashPassword(register.password, salt)
+
+        const newUser = await prisma.user.create({
+            data:{
+                name: register.name,
+                salt,
+                email: register.email,
+                password:passwordHashed,
+                phone: register.phone,
+                sex: register.sex,
+                avatar: register.avatar,
+                dateOfBirth: register.dateOfBirth
             }
         })
-    }
 
-    async findByRefreshToken (refreshToken: ShopKeyToken['refreshToken']){
-        return await prisma.shopKeyToken.findFirst({
-            where:{refreshToken}
-        })
+        if(newUser){
+            const { publicKey, privateKey } = this.generateKeyPair();
+            const tokens = JsonWebToken.createToken({accountId:newUser.id, email: newUser.email},publicKey, privateKey)
+            if(!tokens)throw new BadRequestError('create tokens error!!!!!!')
+            const userTokenService = this.userTokenService();
+            const keyStore = await userTokenService.createKeyToken({
+                accountId: newUser.id,
+                publicKey:publicKey,
+                refreshToken:tokens.refreshToken
+            })
+            if(!keyStore) throw new Error('cannot generate keytoken');
+
+            return{
+                shop:getInfoData(['id','email',],newUser),
+                tokens
+            }
+        }
+        return {
+            code:200,
+            metadata:null
+        }  
     }
 }
 
-// UserToken.ts
-export class UserToken implements IToken {
-    async createKeyToken({ userId, publicKey , refreshToken }: UserKeyToken) {
-        const result =  await prisma.userKeyToken.upsert ({
-            where: { userId },
-            update: { publicKey, refreshToken }, // If it exists, update the record
-            create: { userId, publicKey, refreshToken }, // If it doesn't exist, create a new one
+abstract class BaseToken<T> {
+    protected abstract model: any;
+
+    async createKeyToken({ accountId, publicKey, refreshToken }: { accountId: string; publicKey: string; refreshToken: string }) {
+        return await this.model.upsert({
+            where: { accountId },
+            update: { publicKey, refreshToken },
+            create: { accountId, publicKey, refreshToken },
         });
-        return result
-
     }
 
-    async findByAccountId(userId: string): Promise<{} | null> {
-        return await prisma.userKeyToken.findFirst({
-            where:{
-                userId
-            }
-        })
+    async findByAccountId(accountId: string) {
+        return await this.model.findFirst({
+            where: { accountId },
+        });
+    }
+
+    async removeKeyByUUID(accountId: string) {
+        const keyToken = await this.model.findFirst({
+            where: { accountId },
+        });
+
+        if (keyToken) {
+            return await this.model.delete({
+                where: { id: keyToken.id },
+            });
+        } else {
+            throw new Error("KeyToken not found");
+        }
+    }
+
+    async findByRefreshTokenUsed(refreshToken: string) {
+        return await this.model.findFirst({
+            where: {
+                refreshTokensUsed: { has: refreshToken },
+            },
+        });
+    }
+
+    async findByRefreshToken(refreshToken: string) {
+        return await this.model.findFirst({
+            where: { refreshToken },
+        });
     }
 }
 
-// export abstract class AbstractAccountFactory {
-//     abstract createAccount(type: 'shop' | 'user'): Account;
-// }
+class ShopToken extends BaseToken<any> implements IToken{
+    protected model = prisma.shopKeyToken;
+}
 
-// export abstract class AbstractTokenFactory {
-//     abstract createToken(type: 'shop' | 'user'): Token;
-// }
-
-// class AccountFactory extends AbstractAccountFactory {
-//     createAccount(type: 'shop' | 'user'): Account {
-//         switch (type) {
-//             case 'shop': return new ShopAccount();
-//             case 'user': return new UserAccount();
-//             default: throw new Error("Invalid account type");
-//         }
-//     }
-// }
-
-// class TokenFactory extends AbstractTokenFactory {
-//     createToken(type: 'shop' | 'user'): Token {
-//         switch (type) {
-//             case 'shop': return new ShopToken();
-//             case 'user': return new UserToken();
-//             default: throw new Error("Invalid token type");
-//         }
-//     }
-// }
-
-// const accountFactory = new AccountFactory();
-// export const shopAccount = accountFactory.createAccount('shop');
-// export const userAccount = accountFactory.createAccount('user');
-
-// const tokenFactory = new TokenFactory();
-// export const shopToken = tokenFactory.createToken('shop');
-// export const userToken = tokenFactory.createToken('user');
+class UserToken extends BaseToken<any> implements IToken{
+    protected model = prisma.userKeyToken;
+}
 
 function clientCode(factory: AbstractFactory) {
     const account = factory.createAccount();

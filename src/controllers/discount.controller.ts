@@ -14,7 +14,7 @@ class DiscountController{
         
         const result = await DiscountService.createDiscountCode({
             payload,
-            shopId:req.shop.shopId
+            shopId:req.shop.accountId
         })
         new SuccessResponse({
             message: 'Successfully generate code',

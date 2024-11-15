@@ -2,8 +2,8 @@ import JWT from 'jsonwebtoken'
 import { BadRequestError } from '../core/error.response'
 
 export class JsonWebToken{
-    static createShoptoken(
-        payload: { shopId: string, email: string}, 
+    static createToken(
+        payload: { accountId: string, email: string}, 
         publicKey: string,
         privateKey: string
     ){

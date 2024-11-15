@@ -7,9 +7,9 @@ import morgan from 'morgan';
 import router from './routes';
 import { v4 as uuidv4 } from 'uuid';
 
-import { IKeyToken } from './services/keyToken.service';
+import { KeyToken } from './shared/interface/keyToken.interface';
 import { IdecodeUser } from './middlewares/authentication.middleware';
-import { UserDecode, ShopDecode } from './shared/interface/decode.interface';
+import { Decode } from './shared/interface/decode.interface';
 import myLogger from './middlewares/mylogger.log';
 
 interface Iapikey {
@@ -21,9 +21,9 @@ interface Iapikey {
 declare global{
     namespace Express{   
         interface Request {
-            keyStore: IKeyToken;
-            user: UserDecode;
-            shop: ShopDecode;
+            keyStore: KeyToken;
+            user: Decode;
+            shop: Decode;
             refreshToken: string;
             apiKey: Iapikey
             requestId: string

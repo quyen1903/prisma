@@ -30,8 +30,8 @@ model ShopKeyToken {
   id                String    @id  @unique @default(uuid())
 
   //1-1 relation with shop
-  shop              Shop      @relation(fields: [shopId],references: [id])
-  shopId            String    @unique @map("key_shop")
+  shop              Shop      @relation(fields: [accountId],references: [id])
+  accountId         String    @unique @map("key_shop")
   publicKey         String
   refreshTokensUsed String[]  @default([])
   refreshToken      String
@@ -228,8 +228,8 @@ model User {
 
 model UserKeyToken {
   id                String    @id  @unique @default(uuid())
-  user              User      @relation(fields: [userId],references: [id])
-  userId            String    @unique @map("key_user")
+  user              User      @relation(fields: [accountId],references: [id])
+  accountId         String    @unique @map("key_user")
   publicKey         String
   refreshTokensUsed String[]  @default([])
   refreshToken      String
