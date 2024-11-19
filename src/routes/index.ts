@@ -4,6 +4,7 @@ import { apiKey, permission } from '../middlewares/authentication.middleware';
 import access from './access';
 import api from './api'
 import discount from './discount'
+import inventory from './inventory'
 import product from './product'
 import cart from './cart'
 
@@ -15,6 +16,7 @@ router.use(permission('0000'));
 
 router.use('/v1/api/cart', cart)
 router.use('/v1/api/discount', discount)
+router.use('/v1/api/inventory', inventory)
 router.use('/v1/api/product', product);
 router.use('/v1/api', access);
 

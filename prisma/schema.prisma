@@ -8,7 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// shop model with uuid as primary key
 model Shop {
   id        String    @id  @unique @default(uuid())
   name      String    @map("shop_name")
@@ -25,20 +24,18 @@ model Shop {
   @@map("shops")
 }
 
-// keyToken model with reference to shop uuid
 model ShopKeyToken {
   id                String    @id  @unique @default(uuid())
 
   //1-1 relation with shop
   shop              Shop      @relation(fields: [accountId],references: [id])
   accountId         String    @unique @map("key_shop")
-  publicKey         String
+  publicKey         String    @map("shop_public_key")
   refreshTokensUsed String[]  @default([])
-  refreshToken      String
+  refreshToken      String    @map("shop_refresh_token")
   createdAt         DateTime  @map("created_at") @default(now())
   updatedAt         DateTime  @map("updated_at") @updatedAt
 
-  // Define foreign key relationship to Shop model
   @@map("shop_key_tokens")
 }
 
@@ -73,6 +70,7 @@ model Product {
   updatedAt             DateTime    @map("updated_at") @updatedAt
 
   inventory   Inventory?
+  comment     Comment?
   clothing    Clothing[]
   electronic  Electronic[]
   furniture   Furniture[]
@@ -193,18 +191,37 @@ model CartProduct {
 }
 
 model Order {
-  id                  String    @id  @unique @default(uuid())
-  orderUserId         String    @map("order_userId")
-  orderCheckout       Json      @map("order_checkout")
-  orderPayment        Json      @map("order_payment")
-  orderProduct        String[]  @map("order_product")
-  orderTrackingNumber String    @map("order_trackingNumber")
-  orderStatus         String    @map("order_status")
+  id                  String      @id  @unique @default(uuid())
+  orderUser           User        @relation(fields: [orderUserId], references: [id])
+  orderUserId         String      @unique @map("order_userId")
+  orderCheckout       Json        @map("order_checkout")
+  orderPayment        Json        @map("order_payment")
+  orderProduct        Json[]      @map("order_product")
+  orderTrackingNumber String      @default("'#0000127032024")@map("order_tracking_number")
+  orderStatus         OrderStatus @default(PENDING)@map("order_status")
 
   createdAt           DateTime  @map("created_at") @default(now())
   updatedAt           DateTime  @map("updated_at") @updatedAt
 
-  @@map("order")
+  @@map("orders")
+}
+
+model Comment {
+  id                String  @id  @unique @default(uuid())
+  commentProduct    Product @relation(fields: [commentProductId], references: [id])
+  commentProductId  String  @unique @map("comment_product")
+  commentUser       User    @relation(fields: [commentUserId], references: [id])
+  commentUserId     String  @unique @map("comment_user")
+  commentContent    String  @map("comment_content")
+  commentLeft       Int     @map("comment_left")
+  commentRight      Int     @map("comment_right")
+  commentParentId   String  @map("comment_parent_id")
+  isDeleted         Boolean @map("is_deleted")
+
+  createdAt           DateTime  @map("created_at") @default(now())
+  updatedAt           DateTime  @map("updated_at") @updatedAt
+
+  @@map("comments")
 }
 
 model User {
@@ -222,7 +239,10 @@ model User {
   updatedAt   DateTime  @map("updated_at") @updatedAt
 
   userKeyToken  UserKeyToken?
-  cart  Cart?
+  cart          Cart?
+  order         Order?
+  comment       Comment?
+
   @@map("users")
 }
 
@@ -230,11 +250,13 @@ model UserKeyToken {
   id                String    @id  @unique @default(uuid())
   user              User      @relation(fields: [accountId],references: [id])
   accountId         String    @unique @map("key_user")
-  publicKey         String
+  publicKey         String    @map("user_public_key")
   refreshTokensUsed String[]  @default([])
-  refreshToken      String
+  refreshToken      String    @map("user_refresh_token")
+
   createdAt         DateTime  @map("created_at") @default(now())
   updatedAt         DateTime  @map("updated_at") @updatedAt
+
   @@map("user_key_tokens")
 }
 
@@ -269,6 +291,13 @@ enum DiscountAppliesTo {
   specific
 }
 
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  CANCELLED
+  DELIVERED
+}
 enum Sex {
   MALE
   FEMALE

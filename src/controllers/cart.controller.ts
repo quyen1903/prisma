@@ -54,7 +54,7 @@ class CartController{
     listToCart = async function(req: Request, res: Response, next: NextFunction){
         new SuccessResponse({
             message:'Get list Cart Success',
-            metadata: await CartService.getListUserCart(req.query as unknown as ICartRequest)
+            metadata: await CartService.getListUserCart(req.query.toString())
         }).send(res)
     }
 }

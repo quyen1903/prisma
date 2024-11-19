@@ -31,37 +31,37 @@ const redlock = new Redlock(
 export const acquireLock = async (productId: string, quantity: number, cartId: string) => {
     const resource = `locks:product:${productId}`;
     const retryTime = 10;
-    const expireTime = 3000;
+    const expireTime = 5000; // Tăng expireTime nếu cần xử lý lâu hơn.
     
     for (let i = 0; i < retryTime; i++) {
         try {
             const lock = await redlock.acquire([resource], expireTime);
-            console.log(`Acquired lock:`, lock);
+            console.log(`Acquired lock for resource: ${resource}`);
             
             try {
                 const reservationResult = await reservationInventory({ productId, quantity, cartId });
                 
-                if (reservationResult && reservationResult.inventoryStock >= 0) { 
-                    // If reservationResult is returned and inventoryStock was modified successfully
-                    await lock.release();
-                    console.log(`Lock released for product ${productId}`);
-                    return reservationResult;  // Return the result to indicate success
+                if (reservationResult && reservationResult.inventoryStock >= 0) {
+                    console.log(`Inventory reserved successfully for productId: ${productId}`);
+                    return lock;
+                } else {
+                    console.log(`Failed to reserve inventory for productId: ${productId}`);
                 }
-                
-                await lock.release();
-                console.log(`Lock released but reservation was not successful.`);
             } catch (error) {
+                console.error(`Error during inventory reservation for productId: ${productId}`, error);
+                throw error; 
+            } finally {
                 await lock.release();
-                console.error('Error during reservation:', error);
+                console.log(`Lock released for resource: ${resource}`);
             }
         } catch (error) {
-            console.log(`Failed to acquire lock, retrying...`, error);
+            console.log(`Failed to acquire lock for resource: ${resource}. Retrying...`, error);
             await new Promise(resolve => setTimeout(resolve, 50));
         }
     }
-    
     throw new Error('Failed to acquire lock after multiple attempts');
-}
+};
+
 
 export async function releaseLock(lock: Lock) {
     try {

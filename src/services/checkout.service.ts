@@ -86,55 +86,54 @@ class CheckoutService{
         }
     }
     
-    // static async orderByUser({ 
-    //     shop_order_ids, 
-    //     cartId, userId, 
-    //     user_address = {}, 
-    //     user_payment = {} 
-    // }:{
-    //     shop_order_ids: Ishop_order_ids[]
-    //     cartId: string;
-    //     userId: string;
-    //     user_address: {};
-    //     user_payment: {};
-    // }){
-    //     const { shop_order_ids_new, checkout_order} = await CheckoutService.checkoutReview({
-    //         cartId,
-    //         userId,
-    //         shop_order_ids
-    //     })
-    //     //apply callback to each element of array and flattern result by one level
-    //     const products = shop_order_ids_new.flatMap(order => order.item_products);
-    //     const accquireProduct = []
+    static async orderByUser({ 
+        shopOrderIds, 
+        cartId, userId, 
+        user_address = {}, 
+        user_payment = {} 
+    }:{
+        shopOrderIds: IshopOrderIds[]
+        cartId: string;
+        userId: string;
+        user_address: {};
+        user_payment: {};
+    }){
+        const { shopOrderIdsNew, checkout_order} = await CheckoutService.checkoutReview({
+            cartId,
+            userId,
+            shopOrderIds
+        })
+        //apply callback to each element of array and flattern result by one level
+        const products = shopOrderIdsNew.flatMap(order => order.itemProducts);
+        const accquireProduct = []
         
-    //     for(let i = 0; i < products.length; i++){
-    //         const { productId, quantity } = products[i];
-    //         const keyLock = await acquireLock(productId, quantity, cartId);
-    //         accquireProduct.push( keyLock ? true : false)
-    //         if(keyLock){
-    //             await releaseLock(keyLock)
-    //         }
-    //     }
+        for(let i = 0; i < products.length; i++){
+            const { productId, quantity } = products[i];
+            const keyLock = await acquireLock(productId, quantity, cartId);
+            accquireProduct.push( keyLock ? true : false)
+            if(keyLock){
+                await releaseLock(keyLock)
+            }
+        }
 
-    //     //check
-    //     if(accquireProduct.includes(false)){
-    //         throw new BadRequestError('some product has been updated')
-    //     }
+        //check
+        if(accquireProduct.includes(false)){
+            throw new BadRequestError('some product has been updated')
+        }
 
-    //     const newOrder = await prisma.order.create({
-    //         data:{
-    //             orderUserId: userId,
-    //             orderCheckout: checkout_order,
-    //             order_shipping:user_address,
-    //             order_payment:user_payment,
-    //             order_products:shop_order_ids_new    
-    //         }
-    //     })
+        const newOrder = await prisma.order.create({
+            data:{
+                orderUserId: userId,
+                orderCheckout: checkout_order,
+                orderPayment:user_payment,
+                orderProduct:shopOrderIdsNew    
+            }
+        })
 
-    //     //if insert success, remove product inside cart
-    //     if(newOrder) 
-    //     return newOrder
-    // }
+        //if insert success, remove product inside cart
+        if(newOrder) 
+        return newOrder
+    }
 
     // static async getOrdersByUser(){
 

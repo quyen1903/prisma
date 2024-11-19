@@ -61,29 +61,13 @@ export function permission( permission: '0000' |'1111' |'2222' ){
 }
 
 export const authentication = asyncHandler(async(req:Request, res: Response, next: NextFunction)=>{
-    /* 
-    1 - check userId misssing
-    2 - check keytoken referencing to currently userId
 
-    3   - if refresh token existed, check user in database
-    3.1 - extends request header with keytoken, userId and refreshtoken
-    3.2 - OK => return next()
-
-    4   - get acccess token, check user in database
-    4.1 - extends request header with keytoken, userId
-    4.2 - OK => return next()
-
-    */
-
-    //1
     const accountId = req.headers[HEADER.CLIENT_ID] as string
     if(!accountId) throw new AuthFailureError('Invalid Request, missing client ID')    
 
-    //2
     const keyStore = await shop.token.findByAccountId(accountId)
     if(!keyStore) throw new NotFoundError('Not Found Keystore')
 
-    //3
     if(req.headers[HEADER.REFRESHTOKEN]){
         try {
             const refreshToken = req.headers[HEADER.REFRESHTOKEN] as string
@@ -98,7 +82,6 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
         }
     }
 
-    //4
     const accessToken = req.headers[HEADER.AUTHORIZATION] as string
     if(!accessToken) throw new AuthFailureError('Invalid Request')
 

@@ -107,7 +107,7 @@ class CartService{
         return deleteCart          
     }
 
-    static async getListUserCart({userId}:{userId: string}){
+    static async getListUserCart(userId: string){
         const cart = await getCart({userId})
 
         return await prisma.cartProduct.findMany({
