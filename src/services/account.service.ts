@@ -79,7 +79,6 @@ class AccountFactory{
         return (prisma as any)[modelName].findFirst({
             where: {email:whereClause},
           });
-        
     }
 
     shopTokenService(){

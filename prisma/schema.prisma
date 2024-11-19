@@ -207,19 +207,19 @@ model Order {
 }
 
 model Comment {
-  id                String  @id  @unique @default(uuid())
-  commentProduct    Product @relation(fields: [commentProductId], references: [id])
-  commentProductId  String  @unique @map("comment_product")
-  commentUser       User    @relation(fields: [commentUserId], references: [id])
-  commentUserId     String  @unique @map("comment_user")
-  commentContent    String  @map("comment_content")
-  commentLeft       Int     @map("comment_left")
-  commentRight      Int     @map("comment_right")
-  commentParentId   String  @map("comment_parent_id")
-  isDeleted         Boolean @map("is_deleted")
+  id                String    @id  @unique @default(uuid())
+  commentProduct    Product   @relation(fields: [commentProductId], references: [id])
+  commentProductId  String    @unique @map("comment_product")
+  commentUser       User      @relation(fields: [commentUserId], references: [id])
+  commentUserId     String    @unique @map("comment_user")
+  commentContent    String    @map("comment_content")
+  commentLeft       Int       @default(0)@map("comment_left")
+  commentRight      Int       @default(0)@map("comment_right")
+  commentParentId   String    @unique@map("comment_parent_id")
+  isDeleted         Boolean   @default(false)@map("is_deleted")
 
-  createdAt           DateTime  @map("created_at") @default(now())
-  updatedAt           DateTime  @map("updated_at") @updatedAt
+  createdAt         DateTime  @map("created_at") @default(now())
+  updatedAt         DateTime  @map("updated_at") @updatedAt
 
   @@map("comments")
 }

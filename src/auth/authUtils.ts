@@ -8,16 +8,17 @@ export class JsonWebToken{
         privateKey: string
     ){
         try {
+            
             const accessToken =  JWT.sign(payload,privateKey,{
                 expiresIn:'2 days',
                 algorithm:'RS256'
             })
+
             const refreshToken=  JWT.sign(payload,privateKey,{
                 expiresIn:'7 days',
                 algorithm:'RS256'
             })
         
-            //
             JWT.verify(accessToken,publicKey,(err,decode)=>{
                 if(err){
                     throw new BadRequestError(' JWT verify error :::')
@@ -31,8 +32,4 @@ export class JsonWebToken{
             throw new BadRequestError('Error creating token pair');
         }
     }
-
-    static verifyJWT(token: string, keySecret: string){
-        return JWT.verify(token, keySecret)
-    } 
 }

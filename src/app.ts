@@ -8,7 +8,6 @@ import router from './routes';
 import { v4 as uuidv4 } from 'uuid';
 
 import { KeyToken } from './shared/interface/keyToken.interface';
-import { IdecodeUser } from './middlewares/authentication.middleware';
 import { Decode } from './shared/interface/decode.interface';
 import myLogger from './middlewares/mylogger.log';
 
