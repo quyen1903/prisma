@@ -89,7 +89,6 @@ class CheckoutService{
     static async orderByUser({ 
         shopOrderIds, 
         cartId, userId, 
-        user_address = {}, 
         user_payment = {} 
     }:{
         shopOrderIds: IshopOrderIds[]
@@ -135,13 +134,28 @@ class CheckoutService{
         return newOrder
     }
 
-    // static async getOrdersByUser(){
+    static async getOrdersByUser(userId : string){
+        const order = await prisma.order.findMany({
+            where:{
+                orderUserId: userId
+            }
+        })
 
-    // }
+        if(!order) throw new BadRequestError('wrong userId in get order, please try again');
+        return order
+    }
 
-    // static async getOneOrdersByUser(){
-        
-    // }
+    static async getOneOrdersByUser(userId : string, orderId: string){
+        const order = await prisma.order.findUnique({
+            where:{
+                id: orderId,
+                orderUserId: userId
+            }
+        })
+
+        if(!order) throw new BadRequestError('wrong userId or orderId in get order, please try again');
+        return order
+    }
 
     // static async cancelOrderByUser(){
         

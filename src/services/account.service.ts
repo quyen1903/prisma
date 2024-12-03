@@ -7,16 +7,13 @@ import { BadRequestError, AuthFailureError, NotFoundError, ForbiddenError } from
 import { JsonWebToken } from '../auth/authUtils';
 import { RoleShop, IAccountBase } from '../shared/interface/account.interface';
 import { KeyToken } from '../shared/interface/keyToken.interface';
-import { Decode } from '../shared/interface/decode.interface';
+import { JWTdecode } from '../shared/interface/jwt.interface';
 
 interface IAccount {
+    handleRefreshToken(keyStore: KeyToken, jwt: JWTdecode, refreshToken: string):Promise<void> |{};
     login(data: IAccountBase):Promise <void>| {};
     register(data: IAccountBase):Promise <void> | {};
     logout(keyStore: KeyToken):Promise <void> | {};
-}
-
-interface IShopAccount extends IAccount{
-    handleRefreshToken(keyStore: KeyToken, user: Decode, refreshToken: string):Promise<void> |{};
 }
 
 interface IToken {
@@ -30,7 +27,7 @@ interface AbstractFactory {
 }
 
 class ShopFactory implements AbstractFactory {
-    public createAccount(): IShopAccount {
+    public createAccount(): IAccount {
         return new ShopAccount();
     }
 
@@ -50,8 +47,8 @@ class UserFactory implements AbstractFactory {
 }
 
 
-class AccountFactory{
-    hashPassword(password:string, salt:string):Promise<string> {
+abstract class AccountFactory{
+    protected hashPassword(password:string, salt:string):Promise<string> {
         return new Promise((resolve, reject) => {
             crypto.pbkdf2(password, salt, 100,64,'sha512', (err, key) => {
                 if (err) return  reject(err)
@@ -60,7 +57,7 @@ class AccountFactory{
         });
     }
 
-    generateKeyPair(){
+    protected generateKeyPair(){
         const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa',{
             modulusLength:4096,
             publicKeyEncoding:{
@@ -75,30 +72,25 @@ class AccountFactory{
         return {publicKey, privateKey}
     }
 
-    async find(modelName: 'shop' | 'user' | 'product', whereClause: any){
+    protected find(modelName: 'shop' | 'user', find: string){
         return (prisma as any)[modelName].findFirst({
-            where: {email:whereClause},
-          });
+            where: {email:find},
+        });
     }
 
-    shopTokenService(){
+    protected shopTokenService(){
         return new ShopToken()
     }
-    async findUser( email: string ){
-        return await prisma.user.findFirst({
-            where: { email: email}
-        })
-    };
 
-    userTokenService(){
+    protected userTokenService(){
         return new UserToken()
     }
 
 }
 
-class ShopAccount extends AccountFactory implements IShopAccount  {
+class ShopAccount extends AccountFactory implements IAccount  {
 
-    async handleRefreshToken( keyStore: KeyToken, shop: Decode, refreshToken: string ){
+    async handleRefreshToken( keyStore: KeyToken, shop: JWTdecode, refreshToken: string ){
         //1 check wheather user's token been used or not, if been used, remove key and for them to relogin
         const {accountId, email} = shop;
         const shopToken = new ShopToken();
@@ -118,7 +110,7 @@ class ShopAccount extends AccountFactory implements IShopAccount  {
 
         //4 update keytoken in database
         const updateQuery = `
-        UPDATE "key_tokens"
+        UPDATE "shop_key_tokens"
         SET "publicKey" = $1,
             "refreshToken" = $2,
             "refreshTokensUsed" = array_append("refreshTokensUsed", $3)
@@ -203,6 +195,39 @@ class ShopAccount extends AccountFactory implements IShopAccount  {
 
 // UserAccount.ts
 class UserAccount extends AccountFactory implements IAccount {
+    async handleRefreshToken( keyStore: KeyToken, user: JWTdecode, refreshToken: string ){
+        //1 check wheather user's token been used or not, if been used, remove key and for them to relogin
+        const {accountId, email} = user;
+        const userToken = new UserToken();
+        if(keyStore.refreshTokensUsed!.includes(refreshToken)){
+            await userToken.removeKeyByUUID(accountId)
+            throw new ForbiddenError('Something wrong happended, please relogin')
+        }
+
+        //2 if user's token is not valid token, force them to relogin, too
+        if(keyStore.refreshToken !== refreshToken)throw new AuthFailureError('something was wrong happended, please relogin')
+        const foundUser = await this.find("user",email)
+        if(!foundUser) throw new AuthFailureError('shop not registed');
+
+        //3 if this accesstoken is valid, create new accesstoken, refreshtoken
+        const { publicKey, privateKey } = this.generateKeyPair()
+        const tokens = JsonWebToken.createToken({accountId: accountId,email},publicKey,privateKey)
+
+        //4 update keytoken in database
+        const updateQuery = `
+        UPDATE "user_key_tokens"
+        SET "publicKey" = $1,
+            "refreshToken" = $2,
+            "refreshTokensUsed" = array_append("refreshTokensUsed", $3)
+        WHERE "userId" = $4
+        `;
+        await pg.query(updateQuery, [publicKey, tokens.refreshToken, refreshToken, accountId]);
+        return {
+            user,
+            tokens  
+        }
+    };
+
     async logout ( keyStore: KeyToken ){
         const userTokenService = this.userTokenService();        
         const delKey = await userTokenService.removeKeyByUUID(keyStore.accountId );
@@ -219,8 +244,8 @@ class UserAccount extends AccountFactory implements IAccount {
         const { publicKey, privateKey } = this.generateKeyPair();
         const tokens = JsonWebToken.createToken({accountId: foundUser.id,email: login.email}, publicKey, privateKey);
 
-        const shopTokenService = this.shopTokenService();
-        await shopTokenService.createKeyToken({
+        const userTokenService = this.userTokenService();
+        await userTokenService.createKeyToken({
             accountId: foundUser.id,
             publicKey,
             refreshToken:tokens.refreshToken,
@@ -338,4 +363,4 @@ function clientCode(factory: AbstractFactory) {
 
 
 export const user = clientCode(new UserFactory());
-export const shop = clientCode(new ShopFactory()) as { account: IShopAccount; token: IToken };
+export const shop = clientCode(new ShopFactory());

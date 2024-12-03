@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -23,6 +23,43 @@ model Shop {
   products  Product[]
   @@map("shops")
 }
+
+// model ShopRole {
+//   id        String    @id  @unique @default(uuid())
+//   roleName String @map("role_name")
+//   roleDescription String @map("role_description")
+
+//   createdAt         DateTime  @map("created_at") @default(now())
+//   updatedAt         DateTime  @map("updated_at") @updatedAt
+
+//   @@map("roles")
+// }
+
+// model Menu {
+//   id        String    @id  @unique @default(uuid())
+//   shopMenuName  String
+
+//   createdAt         DateTime  @map("created_at") @default(now())
+//   updatedAt         DateTime  @map("updated_at") @updatedAt
+
+//   @@map("shop_menus")
+// }
+
+// model RoleMenu{
+//   roleId  String
+//   menuId  String
+  
+//   @@id([roleId, menuId])  // Composite Primary Key
+//   @@map("role_menus")
+
+// }
+
+// model UserRole {
+//   userId  String
+//   roleId  String
+//   @@id([roleId, userId])  // Composite Primary Key
+
+// }
 
 model ShopKeyToken {
   id                String    @id  @unique @default(uuid())
@@ -206,6 +243,7 @@ model Order {
   @@map("orders")
 }
 
+
 model Comment {
   id                String    @id  @unique @default(uuid())
   commentProduct    Product   @relation(fields: [commentProductId], references: [id])
@@ -258,6 +296,44 @@ model UserKeyToken {
   updatedAt         DateTime  @map("updated_at") @updatedAt
 
   @@map("user_key_tokens")
+}
+
+// model RBAC {
+//   id                String    @id  @unique @default(uuid())
+//   roleName  String
+//   roleSlug  String
+//   roleStatus  Status[]
+//   roleDescription String  @default("")
+//   roleGrants  Json[]
+// }
+
+model SdProduct {
+  id                String    @id  @unique @default(uuid())
+  productName String  @default("")@map("sd_product_name")
+  productDesc String  @default("")@map("sd_product_desc")
+  productStatus Int @map("sd_product_status")//0: out of stock, 1: in stock,
+  productAttributes Json @map("sd_product_attributes")
+  productShopId String  @map("sd_product_shop_id")
+  isDeleted Int //0: delete, 1: null
+
+  createdAt         DateTime  @map("created_at") @default(now())
+  updatedAt         DateTime  @map("updated_at") @updatedAt
+}
+
+model SKU{
+  id                String    @id  @unique @default(uuid())
+  skuNo String  @default("")  @map("sku_no")
+  skuDescription  String  @map("sku_description")
+  skuType Int @map("sku_type")
+  skuStatus Int @map("sku_status")
+  skuSort Int @map("sku_sort")
+  skuStoct  Int @default(0)@map("sku_stock")
+  skuPrice  Float @map("sku_price")
+
+  createdAt         DateTime  @map("created_at") @default(now())
+  updatedAt         DateTime  @map("updated_at") @updatedAt
+
+  @@map("sku")
 }
 
 enum CartState {

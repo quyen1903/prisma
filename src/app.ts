@@ -8,7 +8,7 @@ import router from './routes';
 import { v4 as uuidv4 } from 'uuid';
 
 import { KeyToken } from './shared/interface/keyToken.interface';
-import { Decode } from './shared/interface/decode.interface';
+import { JWTdecode } from './shared/interface/jwt.interface';
 import myLogger from './middlewares/mylogger.log';
 
 interface Iapikey {
@@ -21,8 +21,8 @@ declare global{
     namespace Express{   
         interface Request {
             keyStore: KeyToken;
-            user: Decode;
-            shop: Decode;
+            user: JWTdecode;
+            shop: JWTdecode;
             refreshToken: string;
             apiKey: Iapikey
             requestId: string

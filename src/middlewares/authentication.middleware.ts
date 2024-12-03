@@ -4,20 +4,13 @@ import ApiKey from '../services/apikey.service';
 import asyncHandler from '../shared/helper/async.handler'
 import { AuthFailureError, NotFoundError } from '../core/error.response'
 import { shop, user } from '../services/account.service';
-import { Decode } from '../shared/interface/decode.interface';
+import { JWTdecode } from '../shared/interface/jwt.interface';
 
 const HEADER ={
     API_KEY : 'x-api-key',
     CLIENT_ID:'x-client-id',
     AUTHORIZATION:'authorization',
     REFRESHTOKEN:'x-rtoken-id',
-}
-
-export interface IdecodeUser{
-    accountId: string,
-    email: string,
-    iat: number,
-    exp: number
 }
 
 export async function apiKey (req: Request, res: Response, next: NextFunction){
@@ -71,7 +64,7 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
     if(req.headers[HEADER.REFRESHTOKEN]){
         try {
             const refreshToken = req.headers[HEADER.REFRESHTOKEN] as string
-            const decodeUser = JWT.verify(refreshToken ,keyStore.publicKey) as Decode
+            const decodeUser = JWT.verify(refreshToken ,keyStore.publicKey) as JWTdecode
             if(accountId !== decodeUser.accountId ) throw new AuthFailureError('Invalid User Id')
             req.keyStore = keyStore
             req.shop = decodeUser
@@ -86,7 +79,7 @@ export const authentication = asyncHandler(async(req:Request, res: Response, nex
     if(!accessToken) throw new AuthFailureError('Invalid Request')
 
     try {
-        const decodeUser = JWT.verify(accessToken,keyStore.publicKey) as Decode
+        const decodeUser = JWT.verify(accessToken,keyStore.publicKey) as JWTdecode
         if( accountId !== decodeUser.accountId ) throw new AuthFailureError('Invalid User Id');
         req.keyStore = keyStore
         req.shop = decodeUser
