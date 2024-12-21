@@ -3,12 +3,39 @@ import { prisma,pg } from "../database/init.postgresql";
 import { ShopRegisterDTO, ShopLoginDTO } from "../dto/shop.dto";
 import { UserRegisterDTO, UserLoginDTO } from "../dto/user.dto";
 import { getInfoData } from "../shared/utils";
-import { BadRequestError, AuthFailureError, NotFoundError, ForbiddenError } from "../core/error.response";
+import KeyTokenService from './keytoken.service';
+import { BadRequestError, AuthFailureError, ForbiddenError } from "../core/error.response";
 import { JsonWebToken } from '../auth/authUtils';
 import { RoleShop, IAccountBase } from '../shared/interface/account.interface';
 import { KeyToken } from '../shared/interface/keyToken.interface';
 import { JWTdecode } from '../shared/interface/jwt.interface';
 
+/**
+ * 
+ * this is abstract factory design pattern
+ * abstract factory pattern is perfect fit to made something similarly about logic
+ * in this situation, I create user and shop at the same time
+ * both of them have same functionality in account service like login, logout, etc  
+ * and they have same functionality in keytoken like find keytoken, delete keytoken
+ * at the beginning, I intend to use this pattern because it is perfect fit for my scenarior
+ * but after that, I realize that we just need one keytoken table for all kind of account
+ * that why this implementation look so weird, but because this is my personal project
+ * and I learn from this project, that's why I will use abstract factory pattern for account
+ * and method factory factory for product
+ * of course later on, I will deploy SKU, SPU, which doesnt use method factory pattern anymore
+ * after change business logic code, method factory pattern would be better fit for account service
+ */
+
+
+
+/**
+ * image method factory like one-dimension array
+ * abstract factory, like two-dimension array
+ * 
+ * method factory deploy good fit for create N number of object with same funciton nality
+ * abstract factory deploy good fit for create N serial of object with same functionality and within same step
+*/
+// all account have this bunch of method
 interface IAccount {
     handleRefreshToken(keyStore: KeyToken, jwt: JWTdecode, refreshToken: string):Promise<void> |{};
     login(data: IAccountBase):Promise <void>| {};
@@ -16,36 +43,26 @@ interface IAccount {
     logout(keyStore: KeyToken):Promise <void> | {};
 }
 
-interface IToken {
-    createKeyToken({ publicKey , refreshToken }: KeyToken): Promise<{}>;
-    findByAccountId(data: string): Promise<any> | {}
-}
-
+//interface for abstract factory
 interface AbstractFactory {
     createAccount(): IAccount;
-    createToken(): IToken
 }
 
 class ShopFactory implements AbstractFactory {
+
     public createAccount(): IAccount {
         return new ShopAccount();
     }
 
-    public createToken(): IToken {
-        return new ShopToken();
-    }
 }
 
 class UserFactory implements AbstractFactory {
+
     public createAccount(): IAccount {
         return new UserAccount();
     }
 
-    public createToken(): IToken {
-        return new UserToken();
-    }
 }
-
 
 abstract class AccountFactory{
     protected hashPassword(password:string, salt:string):Promise<string> {
@@ -78,26 +95,25 @@ abstract class AccountFactory{
         });
     }
 
-    protected shopTokenService(){
-        return new ShopToken()
-    }
-
-    protected userTokenService(){
-        return new UserToken()
+    protected createKeyToken( accountId: string, publicKey: string, refreshToken: string, roles: "SHOP"| "USER"){
+        KeyTokenService.createKeyToken( {accountId, publicKey, refreshToken, roles} )
     }
 
 }
 
 class ShopAccount extends AccountFactory implements IAccount  {
 
-    async handleRefreshToken( keyStore: KeyToken, shop: JWTdecode, refreshToken: string ){
+    async handleRefreshToken( keyStore: KeyToken, account: JWTdecode, refreshToken: string ){
         //1 check wheather user's token been used or not, if been used, remove key and for them to relogin
-        const {accountId, email} = shop;
-        const shopToken = new ShopToken();
-        if(keyStore.refreshTokensUsed!.includes(refreshToken)){
-            await shopToken.removeKeyByUUID(accountId)
-            throw new ForbiddenError('Something wrong happended, please relogin')
-        }
+        const {accountId, email} = account;
+
+        const duplicateJWT = await prisma.refreshTokenUsed.findFirst({
+            where:{
+                token: refreshToken
+            }
+        })
+
+        if(duplicateJWT) throw new ForbiddenError('Something wrong happended, please relogin')
 
         //2 if user's token is not valid token, force them to relogin, too
         if(keyStore.refreshToken !== refreshToken)throw new AuthFailureError('something was wrong happended, please relogin')
@@ -106,27 +122,35 @@ class ShopAccount extends AccountFactory implements IAccount  {
 
         //3 if this accesstoken is valid, create new accesstoken, refreshtoken
         const { publicKey, privateKey } = this.generateKeyPair()
-        const tokens = JsonWebToken.createToken({accountId: accountId,email},publicKey,privateKey)
+        const tokens = JsonWebToken.createToken({accountId: accountId,email, role: 'shop'},publicKey,privateKey)
 
-        //4 update keytoken in database
-        const updateQuery = `
-        UPDATE "shop_key_tokens"
-        SET "publicKey" = $1,
-            "refreshToken" = $2,
-            "refreshTokensUsed" = array_append("refreshTokensUsed", $3)
-        WHERE "shopId" = $4
-        `;
-        await pg.query(updateQuery, [publicKey, tokens.refreshToken, refreshToken, accountId]);
+        const update = await prisma.keyToken.update({
+            where:{
+                accountId: account.accountId
+            },
+            data:{
+                publicKey,
+                refreshToken: tokens.refreshToken
+            }
+        })
+
+        const createUsedToken = await prisma.refreshTokenUsed.create({
+            data:{
+                token:refreshToken,
+                keyTokenId: update.id
+            }
+        })
+
         return {
-            shop,
-            tokens  
+            tokens,
+            update,
+            createUsedToken
         }
     };
 
     async logout ( keyStore: KeyToken ){
-        const shopTokenService = this.shopTokenService();        
-        const delKey = await shopTokenService.removeKeyByUUID(keyStore.accountId );
-        return delKey 
+        const delKey = await KeyTokenService.removeKeyByAccountID(keyStore.accountId );
+        return delKey
     };
 
     async login(login: ShopLoginDTO){
@@ -137,13 +161,13 @@ class ShopAccount extends AccountFactory implements IAccount  {
         if (passwordHashed !== foundShop.password) throw new AuthFailureError('Wrong password!!!');
 
         const { publicKey, privateKey } = this.generateKeyPair();
-        const tokens = JsonWebToken.createToken({accountId: foundShop.id,email: login.email}, publicKey, privateKey);
+        const tokens = JsonWebToken.createToken({accountId: foundShop.id,email: login.email, role: 'shop'}, publicKey, privateKey);
 
-        const shopTokenService = this.shopTokenService();
-        await shopTokenService.createKeyToken({
+        await KeyTokenService.createKeyToken({
             accountId: foundShop.id,
             publicKey,
             refreshToken:tokens.refreshToken,
+            roles: "SHOP"
         })
 
         return{
@@ -171,14 +195,24 @@ class ShopAccount extends AccountFactory implements IAccount  {
 
         if(newShop){
             const { publicKey, privateKey } = this.generateKeyPair();
-            const tokens = JsonWebToken.createToken({accountId:newShop.id, email: newShop.email},publicKey, privateKey)
-            if(!tokens)throw new BadRequestError('create tokens error!!!!!!')
-            const shopTokenService = this.shopTokenService();
-            const keyStore = await shopTokenService.createKeyToken({
+            const tokens = JsonWebToken.createToken({
+                accountId:newShop.id,
+                email: newShop.email,
+                role: 'shop'
+            },
+                publicKey,
+                privateKey
+            );
+
+            if(!tokens)throw new BadRequestError('create tokens error!!!!!!');
+
+            const keyStore = await KeyTokenService.createKeyToken({
                 accountId: newShop.id,
                 publicKey:publicKey,
-                refreshToken:tokens.refreshToken
-            })
+                refreshToken:tokens.refreshToken,
+                roles: "SHOP"
+            });
+
             if(!keyStore) throw new Error('cannot generate keytoken');
 
             return{
@@ -195,14 +229,17 @@ class ShopAccount extends AccountFactory implements IAccount  {
 
 // UserAccount.ts
 class UserAccount extends AccountFactory implements IAccount {
-    async handleRefreshToken( keyStore: KeyToken, user: JWTdecode, refreshToken: string ){
+    async handleRefreshToken( keyStore: KeyToken, account: JWTdecode, refreshToken: string ){
         //1 check wheather user's token been used or not, if been used, remove key and for them to relogin
-        const {accountId, email} = user;
-        const userToken = new UserToken();
-        if(keyStore.refreshTokensUsed!.includes(refreshToken)){
-            await userToken.removeKeyByUUID(accountId)
-            throw new ForbiddenError('Something wrong happended, please relogin')
-        }
+        const {accountId, email} = account;
+
+        const duplicateJWT = await prisma.refreshTokenUsed.findFirst({
+            where:{
+                token: refreshToken
+            }
+        })
+
+        if(duplicateJWT) throw new ForbiddenError('Something wrong happended, please relogin')
 
         //2 if user's token is not valid token, force them to relogin, too
         if(keyStore.refreshToken !== refreshToken)throw new AuthFailureError('something was wrong happended, please relogin')
@@ -211,26 +248,34 @@ class UserAccount extends AccountFactory implements IAccount {
 
         //3 if this accesstoken is valid, create new accesstoken, refreshtoken
         const { publicKey, privateKey } = this.generateKeyPair()
-        const tokens = JsonWebToken.createToken({accountId: accountId,email},publicKey,privateKey)
+        const tokens = JsonWebToken.createToken({accountId: accountId,email, role: 'user'},publicKey,privateKey)
 
-        //4 update keytoken in database
-        const updateQuery = `
-        UPDATE "user_key_tokens"
-        SET "publicKey" = $1,
-            "refreshToken" = $2,
-            "refreshTokensUsed" = array_append("refreshTokensUsed", $3)
-        WHERE "userId" = $4
-        `;
-        await pg.query(updateQuery, [publicKey, tokens.refreshToken, refreshToken, accountId]);
+        const update = await prisma.keyToken.update({
+            where:{
+                accountId: account.accountId
+            },
+            data:{
+                publicKey,
+                refreshToken: tokens.refreshToken
+            }
+        })
+
+        const createUsedToken = await prisma.refreshTokenUsed.create({
+            data:{
+                token:refreshToken,
+                keyTokenId: update.id
+            }
+        })
+
         return {
-            user,
-            tokens  
+            tokens,
+            update,
+            createUsedToken
         }
     };
 
     async logout ( keyStore: KeyToken ){
-        const userTokenService = this.userTokenService();        
-        const delKey = await userTokenService.removeKeyByUUID(keyStore.accountId );
+        const delKey = await KeyTokenService.removeKeyByAccountID(keyStore.accountId );
         return delKey 
     };
 
@@ -242,13 +287,13 @@ class UserAccount extends AccountFactory implements IAccount {
         if (passwordHashed !== foundUser.password) throw new AuthFailureError('Wrong password!!!');
 
         const { publicKey, privateKey } = this.generateKeyPair();
-        const tokens = JsonWebToken.createToken({accountId: foundUser.id,email: login.email}, publicKey, privateKey);
+        const tokens = JsonWebToken.createToken({accountId: foundUser.id,email: login.email, role: 'user'}, publicKey, privateKey);
 
-        const userTokenService = this.userTokenService();
-        await userTokenService.createKeyToken({
+        await KeyTokenService.createKeyToken({
             accountId: foundUser.id,
             publicKey,
             refreshToken:tokens.refreshToken,
+            roles: "USER"
         })
 
         return{
@@ -279,13 +324,13 @@ class UserAccount extends AccountFactory implements IAccount {
 
         if(newUser){
             const { publicKey, privateKey } = this.generateKeyPair();
-            const tokens = JsonWebToken.createToken({accountId:newUser.id, email: newUser.email},publicKey, privateKey)
+            const tokens = JsonWebToken.createToken({accountId:newUser.id, email: newUser.email, role: 'user'},publicKey, privateKey)
             if(!tokens)throw new BadRequestError('create tokens error!!!!!!')
-            const userTokenService = this.userTokenService();
-            const keyStore = await userTokenService.createKeyToken({
+            const keyStore = await KeyTokenService.createKeyToken({
                 accountId: newUser.id,
                 publicKey:publicKey,
-                refreshToken:tokens.refreshToken
+                refreshToken:tokens.refreshToken,
+                roles: "USER"
             })
             if(!keyStore) throw new Error('cannot generate keytoken');
 
@@ -301,66 +346,10 @@ class UserAccount extends AccountFactory implements IAccount {
     }
 }
 
-abstract class BaseToken<T> {
-    protected abstract model: any;
-
-    async createKeyToken({ accountId, publicKey, refreshToken }: { accountId: string; publicKey: string; refreshToken: string }) {
-        return await this.model.upsert({
-            where: { accountId },
-            update: { publicKey, refreshToken },
-            create: { accountId, publicKey, refreshToken },
-        });
-    }
-
-    async findByAccountId(accountId: string) {
-        return await this.model.findFirst({
-            where: { accountId },
-        });
-    }
-
-    async removeKeyByUUID(accountId: string) {
-        const keyToken = await this.model.findFirst({
-            where: { accountId },
-        });
-
-        if (keyToken) {
-            return await this.model.delete({
-                where: { id: keyToken.id },
-            });
-        } else {
-            throw new Error("KeyToken not found");
-        }
-    }
-
-    async findByRefreshTokenUsed(refreshToken: string) {
-        return await this.model.findFirst({
-            where: {
-                refreshTokensUsed: { has: refreshToken },
-            },
-        });
-    }
-
-    async findByRefreshToken(refreshToken: string) {
-        return await this.model.findFirst({
-            where: { refreshToken },
-        });
-    }
-}
-
-class ShopToken extends BaseToken<any> implements IToken{
-    protected model = prisma.shopKeyToken;
-}
-
-class UserToken extends BaseToken<any> implements IToken{
-    protected model = prisma.userKeyToken;
-}
-
 function clientCode(factory: AbstractFactory) {
     const account = factory.createAccount();
-    const token = factory.createToken();
-    return { account, token };
+    return { account };
 }
-
 
 export const user = clientCode(new UserFactory());
 export const shop = clientCode(new ShopFactory());

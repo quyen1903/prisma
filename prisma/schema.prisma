@@ -1,8 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["fullTextSearchPostgres"]
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -18,63 +17,38 @@ model Shop {
   createdAt DateTime  @map("created_at") @default(now())
   updatedAt DateTime  @map("updated_at") @updatedAt
 
-  keyToken  ShopKeyToken? // Optional relation to KeyToken
   discount  Discount[]
   products  Product[]
   @@map("shops")
 }
 
-// model ShopRole {
-//   id        String    @id  @unique @default(uuid())
-//   roleName String @map("role_name")
-//   roleDescription String @map("role_description")
+model KeyToken {
+  id                String      @id  @unique @default(uuid())
+  accountId         String      @unique@map("account_id")  
+  publicKey         String      @map("public_key")
+  refreshToken      String      @map("refresh_token")
+  createdAt         DateTime    @map("created_at") @default(now())
+  updatedAt         DateTime    @map("updated_at") @updatedAt
+  roles             AccountRole @map("roles")
 
-//   createdAt         DateTime  @map("created_at") @default(now())
-//   updatedAt         DateTime  @map("updated_at") @updatedAt
+  refreshtokenused  RefreshTokenUsed[]
 
-//   @@map("roles")
-// }
-
-// model Menu {
-//   id        String    @id  @unique @default(uuid())
-//   shopMenuName  String
-
-//   createdAt         DateTime  @map("created_at") @default(now())
-//   updatedAt         DateTime  @map("updated_at") @updatedAt
-
-//   @@map("shop_menus")
-// }
-
-// model RoleMenu{
-//   roleId  String
-//   menuId  String
-  
-//   @@id([roleId, menuId])  // Composite Primary Key
-//   @@map("role_menus")
-
-// }
-
-// model UserRole {
-//   userId  String
-//   roleId  String
-//   @@id([roleId, userId])  // Composite Primary Key
-
-// }
-
-model ShopKeyToken {
-  id                String    @id  @unique @default(uuid())
-
-  //1-1 relation with shop
-  shop              Shop      @relation(fields: [accountId],references: [id])
-  accountId         String    @unique @map("key_shop")
-  publicKey         String    @map("shop_public_key")
-  refreshTokensUsed String[]  @default([])
-  refreshToken      String    @map("shop_refresh_token")
-  createdAt         DateTime  @map("created_at") @default(now())
-  updatedAt         DateTime  @map("updated_at") @updatedAt
-
-  @@map("shop_key_tokens")
+  @@map("key_tokens")
 }
+
+model RefreshTokenUsed {
+  id          String    @id @default(uuid())
+  token       String    @map("refresh_token")
+  usedAt      DateTime  @default(now())@map("used_at")
+  userAgent   String?   @map("user_agent")
+  ipAddress   String?   @map("ip_address")
+  keyTokenId  String    @map("refresh_token_use")
+  keyToken    KeyToken  @relation(fields: [keyTokenId], references: [id])
+
+  @@index([token])
+  @@map("refresh_tokens_used")
+}
+
 
 model APIkey {
   id         String    @id  @unique @default(uuid())
@@ -108,9 +82,9 @@ model Product {
 
   inventory   Inventory?
   comment     Comment?
-  clothing    Clothing[]
-  electronic  Electronic[]
-  furniture   Furniture[]
+  clothing    Clothing?
+  electronic  Electronic?
+  furniture   Furniture?
 
   @@index([productName, productDescription]) // Create a text index for search
   @@map("products")
@@ -276,36 +250,12 @@ model User {
   createdAt   DateTime  @map("created_at") @default(now())
   updatedAt   DateTime  @map("updated_at") @updatedAt
 
-  userKeyToken  UserKeyToken?
   cart          Cart?
   order         Order?
   comment       Comment?
 
   @@map("users")
 }
-
-model UserKeyToken {
-  id                String    @id  @unique @default(uuid())
-  user              User      @relation(fields: [accountId],references: [id])
-  accountId         String    @unique @map("key_user")
-  publicKey         String    @map("user_public_key")
-  refreshTokensUsed String[]  @default([])
-  refreshToken      String    @map("user_refresh_token")
-
-  createdAt         DateTime  @map("created_at") @default(now())
-  updatedAt         DateTime  @map("updated_at") @updatedAt
-
-  @@map("user_key_tokens")
-}
-
-// model RBAC {
-//   id                String    @id  @unique @default(uuid())
-//   roleName  String
-//   roleSlug  String
-//   roleStatus  Status[]
-//   roleDescription String  @default("")
-//   roleGrants  Json[]
-// }
 
 model SdProduct {
   id                String    @id  @unique @default(uuid())
@@ -336,6 +286,16 @@ model SKU{
   @@map("sku")
 }
 
+enum AccountLoginRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AccountRole {
+  SHOP
+  USER
+}
 enum CartState {
   ACTIVE
   COMPLETE

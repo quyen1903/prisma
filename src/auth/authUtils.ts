@@ -7,7 +7,7 @@ export class JsonWebToken{
         privateKey: string
     ){
         return JWT.sign(payload,privateKey,{
-            expiresIn:'2 days',
+            expiresIn:'1 days',
             algorithm:'RS256'
         })
     }
@@ -23,65 +23,7 @@ export class JsonWebToken{
     }
 
     static createToken(
-        payload: { accountId: string, email: string}, 
-        publicKey: string,
-        privateKey: string
-    ){
-        try {
-            
-            const accessToken =  this.accessToken(payload, privateKey)
-            const refreshToken=  this.refreshToken(payload, privateKey)
-        
-            JWT.verify(accessToken,publicKey,(err,decode)=>{
-                if(err){
-                    throw new BadRequestError(' JWT verify error :::')
-                }else{
-                    console.log(`decode verify`,decode)
-                }
-            })
-            return {accessToken,refreshToken}
-        } catch (error) {
-            console.log('Authentication Utilities error:::',error)
-            throw new BadRequestError('Error creating token pair');
-        }
-    }
-
-    static createShopToken(
-        payload: { 
-            id: string,
-            email: string,
-            role: string,
-            permission: string
-        }, 
-        publicKey: string,
-        privateKey: string
-    ){
-        try {
-            
-            const accessToken =  this.accessToken(payload, privateKey)
-            const refreshToken=  this.refreshToken(payload, privateKey)
-        
-            JWT.verify(accessToken,publicKey,(err,decode)=>{
-                if(err){
-                    throw new BadRequestError(' JWT verify error :::')
-                }else{
-                    console.log(`decode verify`,decode)
-                }
-            })
-            return {accessToken,refreshToken}
-        } catch (error) {
-            console.log('Authentication Utilities error:::',error)
-            throw new BadRequestError('Error creating token pair');
-        }
-    }
-
-    static createUserToken(
-        payload: { 
-            id: string,
-            email: string,
-            role: string,
-            permission: string
-        }, 
+        payload: { accountId: string, email: string, role: string}, 
         publicKey: string,
         privateKey: string
     ){

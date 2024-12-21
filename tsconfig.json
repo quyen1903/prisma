@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2023",
-    // "module": "ES2022",
+    "module": "commonjs",
     "outDir": "./dist",
     "rootDir": ".",
     "esModuleInterop": true,
@@ -11,9 +11,7 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "sourceMap": true,
-    "incremental": true,
-    "emitDecoratorMetadata": true,
-    "moduleResolution": "node"
+    "incremental": true
   },
   "include": [
     "./src/**/*",

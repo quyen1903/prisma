@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { KeyToken } from './shared/interface/keyToken.interface';
 import { JWTdecode } from './shared/interface/jwt.interface';
 import myLogger from './middlewares/mylogger.log';
+import {cronJob} from './cronjob'
 
 interface Iapikey {
     key:string;
@@ -21,14 +22,14 @@ declare global{
     namespace Express{   
         interface Request {
             keyStore: KeyToken;
-            user: JWTdecode;
-            shop: JWTdecode;
+            account: JWTdecode;
             refreshToken: string;
             apiKey: Iapikey
             requestId: string
         }
     }
 }
+cronJob.start();
 const app: Express = express();
 //init middleware
 app.use(morgan('dev'));
